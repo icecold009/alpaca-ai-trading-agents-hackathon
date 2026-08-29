@@ -152,7 +152,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 
 **Outcome:** One tiny eligible paper options trade is placed, monitored, and tied to a Decision Card on the fresh account.
 
-- [ ] **FD-031 — Build paper account/clock/positions adapter** `35 min`
+- [x] **FD-031 — Build paper account/clock/positions adapter** `35 min`
   - Capture equity, options buying power, options levels, positions, pending orders, and market clock.
   - Verify: recorded contract tests and one sanitized live paper read.
 
