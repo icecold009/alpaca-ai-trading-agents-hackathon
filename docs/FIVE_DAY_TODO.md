@@ -156,7 +156,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Capture equity, options buying power, options levels, positions, pending orders, and market clock.
   - Verify: recorded contract tests and one sanitized live paper read.
 
-- [ ] **FD-032 — Build underlying market-data adapter** `30 min`
+- [x] **FD-032 — Build underlying market-data adapter** `30 min`
   - Fetch recent SPY bars/quotes and record feed/timestamp provenance.
   - Verify: missing/rate-limit/stale/live cases.
 
