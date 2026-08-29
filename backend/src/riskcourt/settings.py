@@ -1,10 +1,13 @@
 """Typed, fail-closed runtime configuration for RiskCourt."""
 
 from enum import StrEnum
+from pathlib import Path
 from typing import Self
 
 from pydantic import AnyHttpUrl, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class RuntimeMode(StrEnum):
@@ -19,7 +22,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         case_sensitive=False,
-        env_file=None,
+        env_file=PROJECT_ROOT / ".env",
+        env_file_encoding="utf-8",
         extra="ignore",
         frozen=True,
     )
