@@ -160,7 +160,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Fetch recent SPY bars/quotes and record feed/timestamp provenance.
   - Verify: missing/rate-limit/stale/live cases.
 
-- [ ] **FD-033 — Build option-chain adapter** `50 min`
+- [x] **FD-033 — Build option-chain adapter** `50 min`
   - Query calls/puts by expiry and strike range; capture indicative/OPRA feed, quotes, IV, Greeks when available, and missing-value reasons.
   - Verify: pagination, missing Greeks, stale quote, empty chain, and one live chain.
 
