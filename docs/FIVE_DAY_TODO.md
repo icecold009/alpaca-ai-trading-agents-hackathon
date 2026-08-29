@@ -108,43 +108,43 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 
 **Outcome:** The strategy can calculate edge and reject unsafe or low-quality options trades without model authority.
 
-- [ ] **FD-021 — Implement probability aggregation and calibration** `45 min`
+- [x] **FD-021 — Implement probability aggregation and calibration** `45 min`
   - Bound probabilities, weight jurors by declared calibration score, handle disagreement, and produce a deterministic aggregate.
   - Verify: consensus, disagreement, outlier, missing juror, and invalid probability tests.
 
-- [ ] **FD-022 — Implement option-implied hurdle calculation** `45 min`
+- [x] **FD-022 — Implement option-implied hurdle calculation** `45 min`
   - Use current debit/width and contract payoff geometry as a documented proxy; do not label it a literal physical probability.
   - Verify: hand-worked vertical-spread examples and zero/invalid quote guards.
 
-- [ ] **FD-023 — Implement edge and abstention rules** `30 min`
+- [x] **FD-023 — Implement edge and abstention rules** `30 min`
   - Require a configured minimum probability margin after spread/slippage buffer.
   - Verify: below, equal, and above-threshold cases.
 
-- [ ] **FD-024 — Implement contract liquidity filters** `35 min`
+- [x] **FD-024 — Implement contract liquidity filters** `35 min`
   - Require nonzero bid/ask, bounded spread width, supported expiry, valid contract status, and available quote timestamps.
   - Verify: illiquid, crossed, stale, missing-Greek, 0DTE, and unsupported-contract cases.
 
-- [ ] **FD-025 — Implement defined-risk sizing** `40 min`
+- [x] **FD-025 — Implement defined-risk sizing** `40 min`
   - Compute exact maximum debit/loss and cap each trade at 0.5% of account equity, one contract for the MVP.
   - Verify: decimal boundary tests and no notional/fractional option quantities.
 
-- [ ] **FD-026 — Implement portfolio and daily-loss limits** `35 min`
+- [x] **FD-026 — Implement portfolio and daily-loss limits** `35 min`
   - Cap open options risk, positions, pending orders, and daily drawdown; add a global kill switch.
   - Verify: race test toggles kill switch after approval and before execution.
 
-- [ ] **FD-027 — Implement freshness, evidence, expiry, and duplicate rules** `35 min`
+- [x] **FD-027 — Implement freshness, evidence, expiry, and duplicate rules** `35 min`
   - Approval binds option quotes, underlying snapshot, account snapshot, policy version, and short expiry.
   - Verify: mutation matrix and retry/idempotency tests.
 
-- [ ] **FD-028 — Implement append-only decision events and replay** `55 min`
+- [x] **FD-028 — Implement append-only decision events and replay** `55 min`
   - Hash-chain events, project current state, export sanitized Decision Cards, and detect changes/deletions/reordering.
   - Verify: persist/export/replay round-trip plus tamper tests.
 
-- [ ] **FD-029 — Implement deterministic exit policy** `35 min`
+- [x] **FD-029 — Implement deterministic exit policy** `35 min`
   - Encode profit target, maximum loss, edge-decay exit, and time exit; no LLM may widen risk.
   - Verify: entry, hold, profit, loss, stale, expiry-risk, and kill-switch exit cases.
 
-- [ ] **FD-030 — Commit Gate B** `10 min`
+- [x] **FD-030 — Commit Gate B** `10 min`
   - Commit: `feat(strategy): enforce probability edge and options risk policy`.
   - Gate: adversarial inputs cannot produce an order outside the fixed risk envelope.
 

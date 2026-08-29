@@ -36,6 +36,7 @@ where = ["src"]
 addopts = [
   "--strict-config",
   "--strict-markers",
+  "--basetemp=.pytest-tmp",
   "--cov=riskcourt",
   "--cov-branch",
   "--cov-report=term-missing",
