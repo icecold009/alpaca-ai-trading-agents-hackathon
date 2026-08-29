@@ -1,0 +1,268 @@
+{
+  "case_id": "case_edge_positive",
+  "name": "SPY jury edge clears a 600/605 call spread",
+  "recorded": true,
+  "underlying_symbol": "SPY",
+  "as_of": "2026-08-29T12:00:00Z",
+  "evidence": [
+    {
+      "evidence_id": "ev_spy_underlying",
+      "evidence_type": "underlying_quote",
+      "source": "alpaca-recorded",
+      "symbol": "SPY",
+      "observed_at": "2026-08-29T12:00:00Z",
+      "payload_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "summary": "Recorded SPY underlying snapshot for the deterministic demo.",
+      "raw_reference": "edge-positive.json#/evidence/0"
+    },
+    {
+      "evidence_id": "ev_spy_call_600",
+      "evidence_type": "option_quote",
+      "source": "alpaca-recorded",
+      "symbol": "SPY",
+      "observed_at": "2026-08-29T12:00:00Z",
+      "payload_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "summary": "Recorded quote for the SPY 600 call.",
+      "raw_reference": "edge-positive.json#/option_quotes/0"
+    },
+    {
+      "evidence_id": "ev_spy_call_605",
+      "evidence_type": "option_quote",
+      "source": "alpaca-recorded",
+      "symbol": "SPY",
+      "observed_at": "2026-08-29T12:00:00Z",
+      "payload_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "summary": "Recorded quote for the SPY 605 call.",
+      "raw_reference": "edge-positive.json#/option_quotes/1"
+    }
+  ],
+  "option_quotes": [
+    {
+      "occ_symbol": "SPY260918C00600000",
+      "underlying_symbol": "SPY",
+      "expiry": "2026-09-18",
+      "strike": "600",
+      "right": "call",
+      "evidence_id": "ev_spy_call_600",
+      "bid": "3.10",
+      "ask": "3.20",
+      "quoted_at": "2026-08-29T12:00:00Z"
+    },
+    {
+      "occ_symbol": "SPY260918C00605000",
+      "underlying_symbol": "SPY",
+      "expiry": "2026-09-18",
+      "strike": "605",
+      "right": "call",
+      "evidence_id": "ev_spy_call_605",
+      "bid": "1.70",
+      "ask": "1.80",
+      "quoted_at": "2026-08-29T12:00:00Z"
+    }
+  ],
+  "forecasts": [
+    {
+      "forecast_id": "forecast_market",
+      "case_id": "case_edge_positive",
+      "juror_id": "juror_market",
+      "outcome": "above_strike",
+      "probability": "0.62",
+      "calibration_score": "0.9",
+      "confidence_stake": "0.8",
+      "produced_at": "2026-08-29T12:00:00Z",
+      "horizon_at": "2026-09-05T12:00:00Z",
+      "evidence_ids": ["ev_spy_underlying", "ev_spy_call_600", "ev_spy_call_605"],
+      "rationale": "Recorded market-structure evidence supports the upside outcome.",
+      "invalidation": "SPY loses the recorded support level.",
+      "model_version": "recorded-v1",
+      "prompt_version": "jury-market-v1"
+    },
+    {
+      "forecast_id": "forecast_catalyst",
+      "case_id": "case_edge_positive",
+      "juror_id": "juror_catalyst",
+      "outcome": "above_strike",
+      "probability": "0.58",
+      "calibration_score": "0.8",
+      "confidence_stake": "0.7",
+      "produced_at": "2026-08-29T12:00:00Z",
+      "horizon_at": "2026-09-05T12:00:00Z",
+      "evidence_ids": ["ev_spy_underlying"],
+      "rationale": "The recorded catalyst state is mildly constructive.",
+      "invalidation": "A conflicting macro catalyst appears.",
+      "model_version": "recorded-v1",
+      "prompt_version": "jury-catalyst-v1"
+    },
+    {
+      "forecast_id": "forecast_volatility",
+      "case_id": "case_edge_positive",
+      "juror_id": "juror_volatility",
+      "outcome": "above_strike",
+      "probability": "0.54",
+      "calibration_score": "0.7",
+      "confidence_stake": "0.6",
+      "produced_at": "2026-08-29T12:00:00Z",
+      "horizon_at": "2026-09-05T12:00:00Z",
+      "evidence_ids": ["ev_spy_call_600", "ev_spy_call_605"],
+      "rationale": "The recorded vertical remains inside the supported debit geometry.",
+      "invalidation": "The option market becomes illiquid or crossed.",
+      "model_version": "recorded-v1",
+      "prompt_version": "jury-volatility-v1"
+    }
+  ],
+  "strategy": {
+    "jury_probability": "0.5737411764705882352941176471",
+    "market_hurdle": "0.32",
+    "probability_edge": "0.2537411764705882352941176471",
+    "minimum_edge": "0.08",
+    "net_debit": "1.50",
+    "spread_width": "5.00",
+    "slippage_buffer": "0.10"
+  },
+  "intent": {
+    "intent_id": "intent_edge_positive",
+    "case_id": "case_edge_positive",
+    "underlying_symbol": "SPY",
+    "direction": "bullish",
+    "legs": [
+      {
+        "occ_symbol": "SPY260918C00600000",
+        "underlying_symbol": "SPY",
+        "expiry": "2026-09-18",
+        "strike": "600",
+        "right": "call",
+        "position_intent": "buy_to_open",
+        "quantity": 3,
+        "quote_evidence_id": "ev_spy_call_600"
+      },
+      {
+        "occ_symbol": "SPY260918C00605000",
+        "underlying_symbol": "SPY",
+        "expiry": "2026-09-18",
+        "strike": "605",
+        "right": "call",
+        "position_intent": "sell_to_open",
+        "quantity": 3,
+        "quote_evidence_id": "ev_spy_call_605"
+      }
+    ],
+    "maximum_loss": "450",
+    "created_at": "2026-08-29T12:00:00Z",
+    "expires_at": "2026-08-29T12:02:00Z",
+    "evidence_ids": ["ev_spy_underlying", "ev_spy_call_600", "ev_spy_call_605"],
+    "thesis": "Calibrated jury odds clear the option-implied hurdle after slippage.",
+    "invalidation": "The probability edge falls below the policy minimum."
+  },
+  "verdict": {
+    "verdict_id": "verdict_edge_positive",
+    "case_id": "case_edge_positive",
+    "intent_id": "intent_edge_positive",
+    "decision": "resize",
+    "approved_quantity": 1,
+    "maximum_loss": "150",
+    "evaluated_at": "2026-08-29T12:00:01Z",
+    "evidence_ids": ["ev_spy_underlying", "ev_spy_call_600", "ev_spy_call_605"],
+    "policy_version": "risk-v1",
+    "reasons": ["Three requested contracts exceed the one-contract MVP cap; resize to one."]
+  },
+  "approval": {
+    "approval_id": "approval_edge_positive",
+    "case_id": "case_edge_positive",
+    "intent_id": "intent_edge_positive",
+    "verdict_id": "verdict_edge_positive",
+    "approved_at": "2026-08-29T12:00:02Z",
+    "expires_at": "2026-08-29T12:00:32Z",
+    "approved_quantity": 1,
+    "maximum_loss": "150",
+    "evidence_ids": ["ev_spy_underlying", "ev_spy_call_600", "ev_spy_call_605"],
+    "policy_version": "risk-v1"
+  },
+  "events": [
+    {
+      "event_id": "event_case_opened",
+      "case_id": "case_edge_positive",
+      "sequence": 0,
+      "event_type": "case_opened",
+      "occurred_at": "2026-08-29T12:00:00Z",
+      "evidence_ids": ["ev_spy_underlying"],
+      "payload": {"recorded": true}
+    },
+    {
+      "event_id": "event_risk_resize",
+      "case_id": "case_edge_positive",
+      "sequence": 1,
+      "event_type": "risk_evaluated",
+      "occurred_at": "2026-08-29T12:00:01Z",
+      "evidence_ids": ["ev_spy_underlying", "ev_spy_call_600", "ev_spy_call_605"],
+      "payload": {"verdict_id": "verdict_edge_positive", "approved_quantity": 1}
+    },
+    {
+      "event_id": "event_execution_fill",
+      "case_id": "case_edge_positive",
+      "sequence": 2,
+      "event_type": "execution_updated",
+      "occurred_at": "2026-08-29T12:00:05Z",
+      "evidence_ids": ["ev_spy_call_600", "ev_spy_call_605"],
+      "payload": {"execution_id": "execution_edge_positive", "status": "filled"}
+    },
+    {
+      "event_id": "event_pnl_snapshot",
+      "case_id": "case_edge_positive",
+      "sequence": 3,
+      "event_type": "pnl_recorded",
+      "occurred_at": "2026-08-29T13:00:00Z",
+      "evidence_ids": ["ev_spy_call_600", "ev_spy_call_605"],
+      "payload": {"snapshot_id": "pnl_edge_positive", "unrealized_pnl": "25"}
+    }
+  ],
+  "executions": [
+    {
+      "execution_id": "execution_edge_positive",
+      "case_id": "case_edge_positive",
+      "intent_id": "intent_edge_positive",
+      "approval_id": "approval_edge_positive",
+      "client_order_id": "riskcourt-case-edge-positive-v1",
+      "status": "filled",
+      "legs": [
+        {
+          "occ_symbol": "SPY260918C00600000",
+          "underlying_symbol": "SPY",
+          "expiry": "2026-09-18",
+          "strike": "600",
+          "right": "call",
+          "position_intent": "buy_to_open",
+          "quantity": 1,
+          "quote_evidence_id": "ev_spy_call_600"
+        },
+        {
+          "occ_symbol": "SPY260918C00605000",
+          "underlying_symbol": "SPY",
+          "expiry": "2026-09-18",
+          "strike": "605",
+          "right": "call",
+          "position_intent": "sell_to_open",
+          "quantity": 1,
+          "quote_evidence_id": "ev_spy_call_605"
+        }
+      ],
+      "submitted_at": "2026-08-29T12:00:03Z",
+      "filled_at": "2026-08-29T12:00:05Z",
+      "filled_debit": "1.50",
+      "evidence_ids": ["ev_spy_call_600", "ev_spy_call_605"]
+    }
+  ],
+  "pnl_snapshots": [
+    {
+      "snapshot_id": "pnl_edge_positive",
+      "case_id": "case_edge_positive",
+      "execution_id": "execution_edge_positive",
+      "observed_at": "2026-08-29T13:00:00Z",
+      "position_value": "175",
+      "cost_basis": "150",
+      "unrealized_pnl": "25",
+      "realized_pnl": "0",
+      "maximum_loss": "150",
+      "evidence_ids": ["ev_spy_call_600", "ev_spy_call_605"]
+    }
+  ]
+}

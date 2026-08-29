@@ -55,52 +55,52 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 
 **Outcome:** A clean repository can replay an eligible options decision from jury forecasts to a recorded trade and P&L card.
 
-- [ ] **FD-009 — Start `codex/riskcourt-mvp` from the planning commit** `5 min`
+- [x] **FD-009 — Start `codex/riskcourt-mvp` from the planning commit** `5 min`
   - Verify: `git branch --show-current` is correct; `main` is untouched.
 
-- [ ] **FD-010 — Scaffold backend, frontend, fixtures, scripts, docs, and CI folders** `25 min`
+- [x] **FD-010 — Scaffold backend, frontend, fixtures, scripts, docs, and CI folders** `25 min`
   - Acceptance: No generated dependencies are committed.
   - Verify: repository tree matches the revised architecture.
 
-- [ ] **FD-011 — Add MIT license, ignores, editor settings, and secret-safe `.env.example`** `20 min`
+- [x] **FD-011 — Add MIT license, ignores, editor settings, and secret-safe `.env.example`** `20 min`
   - Acceptance: keys, SQLite data, coverage, Node/Python caches, screenshots, and build output are ignored.
   - Verify: secret scan and `git status --ignored --short`.
 
-- [ ] **FD-012 — Configure Python backend tooling** `30 min`
+- [x] **FD-012 — Configure Python backend tooling** `30 min`
   - Include FastAPI, Pydantic, SQLAlchemy/SQLite, `alpaca-py`, model SDK, pytest, Ruff, and mypy.
   - Verify: import, test, lint, and typecheck commands pass.
 
-- [ ] **FD-013 — Configure React frontend tooling** `30 min`
+- [x] **FD-013 — Configure React frontend tooling** `30 min`
   - Include TypeScript, Vite, Tailwind, Recharts, Vitest, Testing Library, Playwright, and accessibility checks.
   - Verify: build and unit test pass.
 
-- [ ] **FD-014 — Enforce recorded/paper-only startup modes** `25 min`
+- [x] **FD-014 — Enforce recorded/paper-only startup modes** `25 min`
   - Recorded mode needs no secrets; paper mode requires paper credentials; any live endpoint/flag aborts startup.
   - Verify: explicit recorded, paper-missing-key, valid-paper, and live-rejected tests.
 
-- [ ] **FD-015 — Define option-domain contracts** `45 min`
+- [x] **FD-015 — Define option-domain contracts** `45 min`
   - `EvidenceItem`, `OptionQuote`, `OptionLeg`, `ProbabilityForecast`, `TradeIntent`, `RiskVerdict`, `ApprovalArtifact`, `DecisionEvent`, `ExecutionRecord`, and `PnLSnapshot`.
   - Acceptance: decimal-safe money, timezone-aware timestamps, OCC symbols, expiry, position intent, maximum loss, and evidence IDs are required.
   - Verify: valid/boundary/malformed serialization tests.
 
-- [ ] **FD-016 — Specify the probability-edge strategy mathematically** `40 min`
+- [x] **FD-016 — Specify the probability-edge strategy mathematically** `40 min`
   - Define juror probability, aggregation/calibration, option-implied break-even proxy, minimum edge, spread selection, max loss, profit target, stop, and time exit.
   - Acceptance: one-page formula/example with no model prose deciding order size.
   - Verify: hand-calculated fixture matches code calculations exactly.
 
-- [ ] **FD-017 — Create the edge-positive recorded fixture** `35 min`
+- [x] **FD-017 — Create the edge-positive recorded fixture** `35 min`
   - Jurors aggregate to an outcome probability above the option-implied hurdle; risk resizes to one contract; recorded multi-leg order fills and later shows paper P&L.
   - Verify: every ID resolves and the maximum loss is reconstructable.
 
-- [ ] **FD-018 — Create the abstain/veto fixture** `30 min`
+- [x] **FD-018 — Create the abstain/veto fixture** `30 min`
   - Use stale/missing quotes, disagreement, or insufficient edge.
   - Acceptance: no execution event can follow the veto.
 
-- [ ] **FD-019 — Build the recorded-case API and clickable UI shell** `75 min`
+- [x] **FD-019 — Build the recorded-case API and clickable UI shell** `75 min`
   - Show juror odds, market-implied odds, edge, selected option legs, max loss, verdict, order, and P&L.
   - Verify: network-disabled Playwright run completes both fixtures.
 
-- [ ] **FD-020 — Commit Gate A** `10 min`
+- [x] **FD-020 — Commit Gate A** `10 min`
   - Commit: `feat(demo): establish eligible options golden path`.
   - Gate: an offline judge can understand why the options trade occurred or was rejected.
 

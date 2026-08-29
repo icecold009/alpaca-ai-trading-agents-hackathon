@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "riskcourt-backend"
+version = "0.1.0"
+description = "Recorded and Alpaca paper-only backend for RiskCourt."
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+license = "MIT"
+dependencies = [
+  "alembic>=1.16,<2",
+  "alpaca-py>=0.44,<1",
+  "fastapi>=0.141.1,<1",
+  "httpx>=0.28,<2",
+  "openai>=3.5,<4",
+  "pydantic>=2.13,<3",
+  "pydantic-settings>=2.15,<3",
+  "sqlalchemy>=2.0.52,<3",
+  "uvicorn[standard]>=0.35,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=2.3.1,<3",
+  "pytest>=9.1,<10",
+  "pytest-cov>=6,<8",
+  "ruff>=0.16.5,<1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = [
+  "--strict-config",
+  "--strict-markers",
+  "--cov=riskcourt",
+  "--cov-branch",
+  "--cov-report=term-missing",
+  "--cov-fail-under=80",
+]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["riskcourt"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src", "tests"]
+strict = true
+warn_unreachable = true

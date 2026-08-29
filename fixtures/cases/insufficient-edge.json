@@ -1,0 +1,191 @@
+{
+  "case_id": "case_insufficient_edge",
+  "name": "SPY jury cannot clear the option hurdle",
+  "recorded": true,
+  "underlying_symbol": "SPY",
+  "as_of": "2026-08-29T12:00:00Z",
+  "evidence": [
+    {
+      "evidence_id": "ev_veto_underlying",
+      "evidence_type": "underlying_quote",
+      "source": "alpaca-recorded",
+      "symbol": "SPY",
+      "observed_at": "2026-08-29T12:00:00Z",
+      "payload_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+      "summary": "Recorded SPY snapshot for the insufficient-edge case.",
+      "raw_reference": "insufficient-edge.json#/evidence/0"
+    },
+    {
+      "evidence_id": "ev_veto_call_600",
+      "evidence_type": "option_quote",
+      "source": "alpaca-recorded",
+      "symbol": "SPY",
+      "observed_at": "2026-08-29T12:00:00Z",
+      "payload_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "summary": "Recorded quote for the SPY 600 call candidate.",
+      "raw_reference": "insufficient-edge.json#/option_quotes/0"
+    },
+    {
+      "evidence_id": "ev_veto_call_605",
+      "evidence_type": "option_quote",
+      "source": "alpaca-recorded",
+      "symbol": "SPY",
+      "observed_at": "2026-08-29T12:00:00Z",
+      "payload_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "summary": "Recorded quote for the SPY 605 call candidate.",
+      "raw_reference": "insufficient-edge.json#/option_quotes/1"
+    }
+  ],
+  "option_quotes": [
+    {
+      "occ_symbol": "SPY260918C00600000",
+      "underlying_symbol": "SPY",
+      "expiry": "2026-09-18",
+      "strike": "600",
+      "right": "call",
+      "evidence_id": "ev_veto_call_600",
+      "bid": "4.10",
+      "ask": "4.20",
+      "quoted_at": "2026-08-29T12:00:00Z"
+    },
+    {
+      "occ_symbol": "SPY260918C00605000",
+      "underlying_symbol": "SPY",
+      "expiry": "2026-09-18",
+      "strike": "605",
+      "right": "call",
+      "evidence_id": "ev_veto_call_605",
+      "bid": "1.70",
+      "ask": "1.80",
+      "quoted_at": "2026-08-29T12:00:00Z"
+    }
+  ],
+  "forecasts": [
+    {
+      "forecast_id": "forecast_veto_market",
+      "case_id": "case_insufficient_edge",
+      "juror_id": "juror_market",
+      "outcome": "above_strike",
+      "probability": "0.52",
+      "calibration_score": "0.9",
+      "confidence_stake": "0.8",
+      "produced_at": "2026-08-29T12:00:00Z",
+      "horizon_at": "2026-09-05T12:00:00Z",
+      "evidence_ids": ["ev_veto_underlying", "ev_veto_call_600", "ev_veto_call_605"],
+      "rationale": "Market structure is only marginally constructive.",
+      "invalidation": "SPY loses recorded support.",
+      "model_version": "recorded-v1",
+      "prompt_version": "jury-market-v1"
+    },
+    {
+      "forecast_id": "forecast_veto_catalyst",
+      "case_id": "case_insufficient_edge",
+      "juror_id": "juror_catalyst",
+      "outcome": "above_strike",
+      "probability": "0.48",
+      "calibration_score": "0.8",
+      "confidence_stake": "0.7",
+      "produced_at": "2026-08-29T12:00:00Z",
+      "horizon_at": "2026-09-05T12:00:00Z",
+      "evidence_ids": ["ev_veto_underlying"],
+      "rationale": "Catalyst evidence does not support the upside outcome.",
+      "invalidation": "A new positive catalyst appears.",
+      "model_version": "recorded-v1",
+      "prompt_version": "jury-catalyst-v1"
+    },
+    {
+      "forecast_id": "forecast_veto_volatility",
+      "case_id": "case_insufficient_edge",
+      "juror_id": "juror_volatility",
+      "outcome": "above_strike",
+      "probability": "0.50",
+      "calibration_score": "0.7",
+      "confidence_stake": "0.6",
+      "produced_at": "2026-08-29T12:00:00Z",
+      "horizon_at": "2026-09-05T12:00:00Z",
+      "evidence_ids": ["ev_veto_call_600", "ev_veto_call_605"],
+      "rationale": "The option structure offers no directional advantage.",
+      "invalidation": "The spread reprices below the hurdle.",
+      "model_version": "recorded-v1",
+      "prompt_version": "jury-volatility-v1"
+    }
+  ],
+  "strategy": {
+    "jury_probability": "0.5023529411764705882352941176",
+    "market_hurdle": "0.52",
+    "probability_edge": "-0.0176470588235294117647058824",
+    "minimum_edge": "0.08",
+    "net_debit": "2.50",
+    "spread_width": "5.00",
+    "slippage_buffer": "0.10"
+  },
+  "intent": {
+    "intent_id": "intent_insufficient_edge",
+    "case_id": "case_insufficient_edge",
+    "underlying_symbol": "SPY",
+    "direction": "bullish",
+    "legs": [
+      {
+        "occ_symbol": "SPY260918C00600000",
+        "underlying_symbol": "SPY",
+        "expiry": "2026-09-18",
+        "strike": "600",
+        "right": "call",
+        "position_intent": "buy_to_open",
+        "quantity": 1,
+        "quote_evidence_id": "ev_veto_call_600"
+      },
+      {
+        "occ_symbol": "SPY260918C00605000",
+        "underlying_symbol": "SPY",
+        "expiry": "2026-09-18",
+        "strike": "605",
+        "right": "call",
+        "position_intent": "sell_to_open",
+        "quantity": 1,
+        "quote_evidence_id": "ev_veto_call_605"
+      }
+    ],
+    "maximum_loss": "250",
+    "created_at": "2026-08-29T12:00:00Z",
+    "expires_at": "2026-08-29T12:02:00Z",
+    "evidence_ids": ["ev_veto_underlying", "ev_veto_call_600", "ev_veto_call_605"],
+    "thesis": "Candidate spread exists, but the jury does not clear its hurdle.",
+    "invalidation": "Re-evaluate only with fresh evidence and a policy-compliant edge."
+  },
+  "verdict": {
+    "verdict_id": "verdict_insufficient_edge",
+    "case_id": "case_insufficient_edge",
+    "intent_id": "intent_insufficient_edge",
+    "decision": "veto",
+    "approved_quantity": 0,
+    "maximum_loss": "0",
+    "evaluated_at": "2026-08-29T12:00:01Z",
+    "evidence_ids": ["ev_veto_underlying", "ev_veto_call_600", "ev_veto_call_605"],
+    "policy_version": "risk-v1",
+    "reasons": ["The calibrated jury probability does not clear the option hurdle by 0.08."]
+  },
+  "approval": null,
+  "events": [
+    {
+      "event_id": "event_veto_opened",
+      "case_id": "case_insufficient_edge",
+      "sequence": 0,
+      "event_type": "case_opened",
+      "occurred_at": "2026-08-29T12:00:00Z",
+      "evidence_ids": ["ev_veto_underlying"],
+      "payload": {"recorded": true}
+    },
+    {
+      "event_id": "event_veto_risk",
+      "case_id": "case_insufficient_edge",
+      "sequence": 1,
+      "event_type": "risk_evaluated",
+      "occurred_at": "2026-08-29T12:00:01Z",
+      "evidence_ids": ["ev_veto_underlying", "ev_veto_call_600", "ev_veto_call_605"],
+      "payload": {"verdict_id": "verdict_insufficient_edge", "decision": "veto"}
+    }
+  ],
+  "executions": [],
+  "pnl_snapshots": []
+}
