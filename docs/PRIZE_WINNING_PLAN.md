@@ -12,6 +12,8 @@
 
 > A prize cannot be guaranteed. This plan is deliberately optimized for the published judging criteria and for a memorable, reliable live demo rather than broad feature count.
 
+For the execution-ready backlog with dependencies, estimates, acceptance criteria, and verification, use [DETAILED_TODO.md](./DETAILED_TODO.md).
+
 ## 1. Event contract
 
 The current LabLab page describes a seven-day, fully online hackathon running August 28–September 4, 2026. The challenge is to build an autonomous trading agent or trading application on Alpaca using its Trading API, MCP server, CLI, and paper environment.
