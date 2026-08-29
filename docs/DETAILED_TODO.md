@@ -1,6 +1,8 @@
 # RiskCourt — Detailed Execution TODO
 
-This is the execution contract for the [prize-winning plan](./PRIZE_WINNING_PLAN.md). It decomposes the MVP into small, ordered tasks with dependencies, acceptance criteria, and verification. Check an item only after its verification passes.
+> **Superseded on August 29, 2026.** The live event page made options trading mandatory, added P&L and fresh-account requirements, and exposed originality conflicts with the original equities-only concept. Do not execute this backlog. Use [FIVE_DAY_TODO.md](./FIVE_DAY_TODO.md) and [EVENT_REQUIREMENTS.md](./EVENT_REQUIREMENTS.md).
+
+This historical backlog preserves the original planning record. It is not the current execution contract.
 
 ## Build operating rules
 
