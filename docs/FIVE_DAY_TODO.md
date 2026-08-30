@@ -164,7 +164,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Query calls/puts by expiry and strike range; capture indicative/OPRA feed, quotes, IV, Greeks when available, and missing-value reasons.
   - Verify: pagination, missing Greeks, stale quote, empty chain, and one live chain.
 
-- [ ] **FD-034 — Build candidate-spread selector** `45 min`
+- [x] **FD-034 — Build candidate-spread selector** `45 min`
   - Generate only same-underlying, same-expiry, supported-width, liquid vertical debit spreads.
   - Verify: candidate ordering is deterministic and every candidate has reconstructable max loss/break-even.
 
