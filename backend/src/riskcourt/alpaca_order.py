@@ -88,6 +88,39 @@ class AlpacaOrderAdapter:
             client_order_id=client_order_id,
         )
 
+    @staticmethod
+    def build_vertical_exit_order(
+        candidate: SpreadCandidate,
+        *,
+        client_order_id: str,
+        credit_price: Decimal,
+    ) -> LimitOrderRequest:
+        """Build a closing credit order; execution remains approval-gated."""
+
+        if not client_order_id or len(client_order_id) > 48:
+            raise ValueError("client_order_id must contain 1 to 48 characters")
+        if credit_price <= 0 or credit_price > candidate.geometry.spread_width:
+            raise ValueError("exit credit must be positive and no greater than spread width")
+        return LimitOrderRequest(
+            qty=1,
+            order_class=OrderClass.MLEG,
+            legs=[
+                OptionLegRequest(
+                    symbol=candidate.long_contract.occ_symbol,
+                    ratio_qty=1,
+                    position_intent=PositionIntent.SELL_TO_CLOSE,
+                ),
+                OptionLegRequest(
+                    symbol=candidate.short_contract.occ_symbol,
+                    ratio_qty=1,
+                    position_intent=PositionIntent.BUY_TO_CLOSE,
+                ),
+            ],
+            limit_price=-float(credit_price),
+            time_in_force=TimeInForce.DAY,
+            client_order_id=client_order_id,
+        )
+
     def submit(self, request: LimitOrderRequest, *, approved: bool = False) -> SubmissionResult:
         """Submit only an approved request, reserving its client ID idempotently."""
 

@@ -186,7 +186,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Record realized/unrealized paper P&L, strategy cost, max risk, and timestamps; execute deterministic exits.
   - Verify: recorded profit/loss scenarios and live read after the paper order.
 
-- [ ] **FD-039 — Preserve competition-account integrity** `20 min`
+- [x] **FD-039 — Preserve competition-account integrity** `20 min`
   - Never reset/delete/reuse the final account after judged activity begins. Keep the account ID and keys out of public source.
   - Verify: submission checklist contains the account-ID field without committing the value.
 

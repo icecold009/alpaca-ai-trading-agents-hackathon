@@ -90,3 +90,16 @@ def test_duplicate_request_is_replayed_without_second_submission() -> None:
     assert first.action.value == "submit"
     assert second.action.value == "replay"
     assert client.calls == 1
+
+
+def test_exit_maps_close_intents_to_a_credit_order() -> None:
+    request = AlpacaOrderAdapter.build_vertical_exit_order(
+        candidate(), client_order_id="riskcourt-exit-001", credit_price=Decimal("0.50")
+    )
+    fields = request.to_request_fields()
+
+    assert fields["limit_price"] == pytest.approx(-0.5)
+    assert [leg["position_intent"] for leg in fields["legs"]] == [
+        "sell_to_close",
+        "buy_to_close",
+    ]
