@@ -207,7 +207,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Each returns probability, confidence stake, cited evidence, uncertainty, and invalidation—not an order.
   - Verify: valid, abstain, hallucinated ID, and injection cases per juror.
 
-- [ ] **FD-043 — Implement jury orchestration** `45 min`
+- [x] **FD-043 — Implement jury orchestration** `45 min`
   - Run independent forecasts, deterministic aggregation, option-hurdle comparison, risk verdict, approval, execution, and monitoring.
   - Acceptance: any partial failure or insufficient edge ends in abstention.
   - Verify: success, disagreement, provider failure, malformed output, timeout, and veto tests.
