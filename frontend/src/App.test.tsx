@@ -39,4 +39,30 @@ describe("RiskCourt recorded cases", () => {
     expect(screen.getByText(/Recorded mode · no credentials required/i)).toBeInTheDocument();
     expect(screen.getByText(/does not provide investment advice/i)).toBeInTheDocument();
   });
+
+  it("replays blocked and failed safety states without leaving the page", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "Market closed" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Market closed — no order sent");
+
+    await user.click(screen.getByRole("button", { name: "Provider failure" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Provider unavailable — abstain");
+
+    await user.click(screen.getByRole("button", { name: "Kill switch" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Kill switch active — execution disabled");
+  });
+
+  it("keeps safety state controls keyboard reachable", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const providerFailure = screen.getByRole("button", { name: "Provider failure" });
+    providerFailure.focus();
+    await user.keyboard("{Enter}");
+
+    expect(providerFailure).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("Provider unavailable — abstain");
+  });
 });

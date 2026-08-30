@@ -8,6 +8,56 @@ const jurorNames: Record<string, string> = {
   juror_volatility: "Options structure",
 };
 
+type ReplayState =
+  | "recorded"
+  | "market-closed"
+  | "missing-quote"
+  | "provider-failure"
+  | "alpaca-rejection"
+  | "kill-switch";
+
+const replayStates: Record<
+  ReplayState,
+  { label: string; status: string; detail: string; tone: "safe" | "blocked" | "error" }
+> = {
+  recorded: {
+    label: "Recorded replay",
+    status: "Recorded fixture ready",
+    detail: "No credentials or network are required for this path.",
+    tone: "safe",
+  },
+  "market-closed": {
+    label: "Market closed",
+    status: "Market closed — no order sent",
+    detail: "Fresh quotes are required before a paper order can be considered.",
+    tone: "blocked",
+  },
+  "missing-quote": {
+    label: "Missing quote",
+    status: "Quote unavailable — abstain",
+    detail: "The candidate cannot be reconstructed without a current option quote.",
+    tone: "blocked",
+  },
+  "provider-failure": {
+    label: "Provider failure",
+    status: "Provider unavailable — abstain",
+    detail: "A timeout or malformed response never reaches the execution boundary.",
+    tone: "error",
+  },
+  "alpaca-rejection": {
+    label: "Alpaca rejection",
+    status: "Alpaca rejected — execution stopped",
+    detail: "The lifecycle records the rejection and prevents a retry from creating a duplicate.",
+    tone: "error",
+  },
+  "kill-switch": {
+    label: "Kill switch",
+    status: "Kill switch active — execution disabled",
+    detail: "The safety control blocks new orders while recorded replay remains available.",
+    tone: "blocked",
+  },
+};
+
 function percent(value: string, suffix = "%") {
   return `${(Number(value) * 100).toFixed(1)}${suffix}`;
 }
@@ -22,6 +72,7 @@ function money(value: string) {
 
 function App() {
   const [selectedCaseId, setSelectedCaseId] = useState(recordedCases[0].case_id);
+  const [replayState, setReplayState] = useState<ReplayState>("recorded");
   const selectedCase =
     recordedCases.find((recordedCase) => recordedCase.case_id === selectedCaseId) ??
     recordedCases[0];
@@ -78,6 +129,58 @@ function App() {
           })}
         </nav>
 
+        <section
+          aria-labelledby="replay-state-heading"
+          className="rounded-3xl border border-white/10 bg-slate-900/70 p-5"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.18em] text-cyan-300">Safety replay</p>
+              <h2 id="replay-state-heading" className="mt-1 text-xl font-semibold text-white">
+                Exercise failure and market states
+              </h2>
+            </div>
+            <p className="text-sm text-slate-400">All states are dry-run UI fallbacks.</p>
+          </div>
+          <div aria-label="Replay states" className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {(Object.keys(replayStates) as ReplayState[]).map((state) => {
+              const selected = state === replayState;
+              return (
+                <button
+                  key={state}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setReplayState(state)}
+                  className={
+                    "rounded-xl border px-3 py-2 text-left text-xs font-semibold transition " +
+                    "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 " +
+                    (selected
+                      ? "border-cyan-300 bg-cyan-300/10 text-cyan-100"
+                      : "border-white/10 bg-white/5 text-slate-300 hover:border-white/25")
+                  }
+                >
+                  {replayStates[state].label}
+                </button>
+              );
+            })}
+          </div>
+          <div
+            role="status"
+            aria-live="polite"
+            className={
+              "mt-4 rounded-2xl border p-4 " +
+              (replayStates[replayState].tone === "safe"
+                ? "border-emerald-400/20 bg-emerald-400/5 text-emerald-100"
+                : replayStates[replayState].tone === "blocked"
+                  ? "border-amber-300/20 bg-amber-300/5 text-amber-100"
+                  : "border-rose-300/20 bg-rose-300/5 text-rose-100")
+            }
+          >
+            <p className="font-semibold">{replayStates[replayState].status}</p>
+            <p className="mt-1 text-sm opacity-80">{replayStates[replayState].detail}</p>
+          </div>
+        </section>
+
         <section aria-labelledby="case-heading" className="space-y-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -116,13 +219,13 @@ function App() {
                 </p>
                 <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <dt className="uppercase tracking-wide text-slate-500">Confidence stake</dt>
+                    <dt className="uppercase tracking-wide text-slate-400">Confidence stake</dt>
                     <dd className="mt-1 text-sm font-semibold text-cyan-200">
                       {percent(forecast.confidence_stake)}
                     </dd>
                   </div>
                   <div>
-                    <dt className="uppercase tracking-wide text-slate-500">Calibration</dt>
+                    <dt className="uppercase tracking-wide text-slate-400">Calibration</dt>
                     <dd className="mt-1 text-sm font-semibold text-cyan-200">
                       {percent(forecast.calibration_score)}
                     </dd>

@@ -224,7 +224,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Show juror probabilities/stakes, aggregate odds, option-implied hurdle, edge margin, chosen legs, max loss, verdict, order, and current P&L.
   - Verify: an unfamiliar viewer explains the edge without narration.
 
-- [ ] **FD-047 — Complete replay, failure, accessibility, and responsive states** `60 min`
+- [x] **FD-047 — Complete replay, failure, accessibility, and responsive states** `60 min`
   - Recorded/live badges, market closed, missing quote, no edge, provider failure, Alpaca rejection, kill switch, keyboard, contrast, and reduced motion.
   - Verify: Axe plus manual keyboard/mobile pass and network-disabled E2E.
 
