@@ -40,12 +40,14 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 - [ ] **FD-006 — Verify the final competition account** `User · 10 min`
   - Confirm the created account is brand-new, dedicated to this hackathon, and has never been reused.
   - Confirm starting equity is exactly $100,000.
+  - Evidence: the sanitized paper read confirmed the $100,000 equity predicate; brand-new/dedicated status still requires user confirmation.
   - Record only `confirmed/not confirmed` locally; do not add the account ID or keys to the public repository.
 
-- [ ] **FD-007 — Verify options permissions** `User + Backend · 10 min`
+- [x] **FD-007 — Verify options permissions** `User + Backend · 10 min`
   - Check `options_approved_level` and `options_trading_level` through the paper account endpoint.
   - Target Level 3 for multi-leg spreads.
   - If only Level 2 is available by the end of Day 2, activate the long-call/long-put fallback and remove spread claims.
+  - Evidence: sanitized paper read returned approved level 3 and trading level 3; no fallback is required.
 
 - [ ] **FD-008 — Freeze the revised product thesis** `User · 10 min`
   - Approve: “RiskCourt is an AI prediction market for options alpha: agents stake calibrated probabilities, and deterministic policy trades only when jury odds beat option-implied odds by a safe margin.”
