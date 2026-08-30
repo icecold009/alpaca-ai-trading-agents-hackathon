@@ -244,7 +244,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Run backend tests/lint/types, frontend tests/build, fixture validation, 12-case evaluation, secret scan, and recorded E2E.
   - Verify: clean checkout produces one green report.
 
-- [ ] **FD-051 — Run security and financial-claim review** `40 min`
+- [x] **FD-051 — Run security and financial-claim review** `40 min`
   - Review secrets, CORS, unsafe HTML, tool authority, injection, logs, exports, dependency issues, account identifiers, paper/live wording, and options-risk disclosure.
   - Acceptance: no unresolved high finding and no unsupported return claim.
 
