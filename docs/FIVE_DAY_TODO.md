@@ -271,9 +271,10 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Hook in 15 seconds, live behavior, Alpaca proof, formula, safety, paper P&L, business/originality, and limitations.
   - Verify: MP4/link accepted by form, under five minutes and 300 MB, captions, no secrets.
 
-- [ ] **FD-057 — Draft all LabLab fields** `40 min`
+- [x] **FD-057 — Draft all LabLab fields** `40 min`
   - Title ≤50 chars, summary ≤255 chars, long description ≥100 words, track, technologies, cover, video, slides, public repo, platform, app URL, account ID, and up to five social links.
-  - Verify: field-by-field comparison with the live form.
+  - Evidence: [`LABLAB_FIELDS_DRAFT.md`](LABLAB_FIELDS_DRAFT.md) contains copy-ready text plus explicit placeholders for unresolved external values.
+  - Verify: text length and required-field checks are recorded; live-form comparison and replacement of placeholders remain part of final submission verification.
 
 - [ ] **FD-058 — Publish up to five build-in-public posts** `P1 · User · 60 min`
   - Only if the release candidate is safe. Tag LabLab and Alpaca and submit exact links.
