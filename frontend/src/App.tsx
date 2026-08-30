@@ -103,15 +103,31 @@ function App() {
                 key={forecast.forecast_id}
                 className="rounded-2xl border border-white/10 bg-white/5 p-5"
               >
-                <p className="text-sm font-medium text-slate-400">
-                  {jurorNames[forecast.juror_id] ?? forecast.juror_id}
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-medium text-slate-400">
+                    {jurorNames[forecast.juror_id] ?? forecast.juror_id}
+                  </p>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-400">
+                    {forecast.evidence_ids.length} evidence refs
+                  </span>
+                </div>
                 <p className="mt-3 text-4xl font-semibold text-white">
                   {percent(forecast.probability)}
                 </p>
-                <p className="mt-2 text-sm text-cyan-200">
-                  Confidence stake {percent(forecast.confidence_stake)}
-                </p>
+                <dl className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <dt className="uppercase tracking-wide text-slate-500">Confidence stake</dt>
+                    <dd className="mt-1 text-sm font-semibold text-cyan-200">
+                      {percent(forecast.confidence_stake)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="uppercase tracking-wide text-slate-500">Calibration</dt>
+                    <dd className="mt-1 text-sm font-semibold text-cyan-200">
+                      {percent(forecast.calibration_score)}
+                    </dd>
+                  </div>
+                </dl>
                 <p className="mt-4 text-sm leading-6 text-slate-400">{forecast.rationale}</p>
               </article>
             ))}
@@ -123,11 +139,11 @@ function App() {
               value={percent(selectedCase.strategy.jury_probability)}
             />
             <Metric
-              label="Market-implied hurdle"
+              label="Option-implied hurdle"
               value={percent(selectedCase.strategy.market_hurdle)}
             />
             <Metric
-              label="Probability edge"
+              label="Probability edge margin"
               value={`${Number(selectedCase.strategy.probability_edge) >= 0 ? "+" : ""}${percent(
                 selectedCase.strategy.probability_edge,
                 " pp",
@@ -135,6 +151,13 @@ function App() {
               accent={isApproved ? "positive" : "negative"}
             />
           </div>
+          <p className="mt-4 text-sm text-slate-400">
+            Minimum edge required:{" "}
+            <span className="font-semibold text-slate-200">
+              {percent(selectedCase.strategy.minimum_edge, " pp")}
+            </span>
+            . The verdict is deterministic and evidence-bound.
+          </p>
         </section>
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -175,7 +198,7 @@ function App() {
             </ul>
             <p className="mt-5 text-sm text-slate-400">
               Net debit {money(selectedCase.strategy.net_debit)} per share · width{" "}
-              {money(selectedCase.strategy.spread_width)}
+              {money(selectedCase.strategy.spread_width)} · {selectedCase.intent.direction} intent
             </p>
           </section>
 

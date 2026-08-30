@@ -10,7 +10,9 @@ export interface RecordedCaseView {
     forecast_id: string;
     juror_id: string;
     probability: string;
+    calibration_score: string;
     confidence_stake: string;
+    evidence_ids: string[];
     rationale: string;
   }>;
   strategy: {
@@ -23,6 +25,7 @@ export interface RecordedCaseView {
   };
   intent: {
     maximum_loss: string;
+    direction: "bullish" | "bearish";
     legs: Array<{
       occ_symbol: string;
       position_intent: string;

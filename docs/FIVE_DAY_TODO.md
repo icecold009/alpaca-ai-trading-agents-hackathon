@@ -220,7 +220,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Balance trade/abstain/veto/error; include stale quotes, illiquidity, no edge, disagreement, injection, duplicate, drawdown, and provider outage.
   - Verify: expected outcome for all 12; zero unauthorized orders and zero unknown evidence accepted.
 
-- [ ] **FD-046 — Build the jury-vs-market UI** `75 min`
+- [x] **FD-046 — Build the jury-vs-market UI** `75 min`
   - Show juror probabilities/stakes, aggregate odds, option-implied hurdle, edge margin, chosen legs, max loss, verdict, order, and current P&L.
   - Verify: an unfamiliar viewer explains the edge without narration.
 

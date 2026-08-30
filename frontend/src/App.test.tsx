@@ -12,6 +12,10 @@ describe("RiskCourt recorded cases", () => {
     expect(screen.getByText("32.0%")).toBeInTheDocument();
     expect(screen.getByText("+$25.00")).toBeInTheDocument();
     expect(screen.getByText(/Approved after deterministic resize/i)).toBeInTheDocument();
+    expect(screen.getByText("Option-implied hurdle")).toBeInTheDocument();
+    expect(screen.getByText("Probability edge margin")).toBeInTheDocument();
+    expect(screen.getAllByText("Calibration")).toHaveLength(3);
+    expect(screen.getByText(/Minimum edge required:/)).toBeInTheDocument();
   });
 
   it("switches to the veto and back without fetching data", async () => {
