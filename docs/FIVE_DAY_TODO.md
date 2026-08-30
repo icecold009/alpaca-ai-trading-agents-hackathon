@@ -262,9 +262,10 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Evidence: root [`README.md`](../README.md) and the accessible architecture graphic [`assets/riskcourt-flow.svg`](assets/riskcourt-flow.svg).
   - Verify: links resolve within the repository; hosted/logged-out checks remain part of FD-052 and FD-060.
 
-- [ ] **FD-055 — Produce cover, screenshots, and PDF slides** `75 min`
+- [x] **FD-055 — Produce cover, screenshots, and PDF slides** `75 min`
   - Show jury odds vs market odds, selected spread, deterministic max loss, execution, and P&L.
-  - Verify: 16:9 PNG/JPG cover; readable at thumbnail size; 6–8-slide PDF.
+  - Evidence: [`RiskCourt-cover.png`](assets/RiskCourt-cover.png), [`RiskCourt-submission-slides.pdf`](assets/RiskCourt-submission-slides.pdf), and editable [`RiskCourt-submission-slides.pptx`](assets/RiskCourt-submission-slides.pptx) contain a seven-slide, 16:9 judge narrative.
+  - Verify: all seven PPTX slides rendered and inspected; `slides_test.py` reports no overflow; PDF has seven 1280×720 pages and was rendered/inspected. Live screenshots and account proof remain separate from these local artifacts.
 
 - [ ] **FD-056 — Record the 2–3 minute video** `75 min`
   - Hook in 15 seconds, live behavior, Alpaca proof, formula, safety, paper P&L, business/originality, and limitations.

@@ -51,6 +51,7 @@ For paper mode, copy [`.env.example`](.env.example) to an ignored `.env`, set pa
 
 - Twelve credential-free evaluation cases cover trade, abstain, veto, and error paths: [`fixtures/evaluation/fd045.json`](fixtures/evaluation/fd045.json).
 - Rehearsal timestamps, responsive/accessibility checks, and Gate D evidence are recorded in [`docs/DEMO_REHEARSAL.md`](docs/DEMO_REHEARSAL.md) and [`docs/GATE_D_EVIDENCE.md`](docs/GATE_D_EVIDENCE.md).
+- Submission visuals are available as the [cover image](docs/assets/RiskCourt-cover.png), [PDF slides](docs/assets/RiskCourt-submission-slides.pdf), and [editable PowerPoint deck](docs/assets/RiskCourt-submission-slides.pptx).
 - The Alpaca Trading API read adapters and guarded multi-leg request mapping are implemented. The official Alpaca MCP/CLI proof, a market-open live paper order, hosted deployment, and final LabLab submission remain explicit release gates; no live-money path exists.
 - Security and claim review: [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md). Submission requirements and account safeguards: [`docs/EVENT_REQUIREMENTS.md`](docs/EVENT_REQUIREMENTS.md) and [`docs/SUBMISSION_CHECKLIST.md`](docs/SUBMISSION_CHECKLIST.md).
 
