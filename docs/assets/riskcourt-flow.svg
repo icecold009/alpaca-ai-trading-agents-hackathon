@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="390" viewBox="0 0 1200 390" role="img" aria-labelledby="title desc">
+  <title id="title">RiskCourt decision flow</title>
+  <desc id="desc">Evidence feeds independent AI jurors, calibration compares jury probability with an option hurdle, risk gates approve or abstain, and approved paper orders produce an audit and P and L card.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#111827"/><stop offset="1" stop-color="#1e293b"/></linearGradient>
+    <linearGradient id="blue" x1="0" x2="1"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#2563eb"/></linearGradient>
+    <linearGradient id="green" x1="0" x2="1"><stop stop-color="#34d399"/><stop offset="1" stop-color="#059669"/></linearGradient>
+    <style>
+      .box{stroke:#94a3b8;stroke-width:2;rx:18}.label{font:600 18px ui-sans-serif,system-ui,sans-serif;fill:#f8fafc}.small{font:14px ui-sans-serif,system-ui,sans-serif;fill:#cbd5e1}.arrow{stroke:#7dd3fc;stroke-width:3;fill:none;marker-end:url(#head)}
+    </style>
+    <marker id="head" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#7dd3fc"/></marker>
+  </defs>
+  <rect width="1200" height="390" fill="url(#bg)"/>
+  <text x="48" y="48" class="label" font-size="26">RiskCourt: argue, calibrate, gate, then act</text>
+  <rect x="48" y="115" width="175" height="150" fill="#334155" class="box"/>
+  <text x="72" y="153" class="label">Evidence</text><text x="72" y="184" class="small">quotes • bars</text><text x="72" y="207" class="small">option chain</text><text x="72" y="230" class="small">account snapshot</text>
+  <rect x="270" y="90" width="205" height="200" fill="url(#blue)" class="box"/>
+  <text x="294" y="132" class="label">AI jury</text><text x="294" y="166" class="small">3 independent</text><text x="294" y="188" class="small">probability forecasts</text><text x="294" y="220" class="small">evidence-bound</text><text x="294" y="242" class="small">structured output</text>
+  <rect x="522" y="90" width="205" height="200" fill="#4338ca" class="box"/>
+  <text x="546" y="132" class="label">Calibration</text><text x="546" y="166" class="small">jury probability</text><text x="546" y="188" class="small">vs option hurdle</text><text x="546" y="220" class="small">edge ≥ 0.08</text><text x="546" y="242" class="small">deterministic</text>
+  <rect x="774" y="90" width="165" height="200" fill="url(#green)" class="box"/>
+  <text x="798" y="132" class="label">Risk court</text><text x="798" y="166" class="small">freshness</text><text x="798" y="188" class="small">liquidity</text><text x="798" y="210" class="small">0.5% / 1 contract</text><text x="798" y="242" class="small">approve / abstain</text>
+  <rect x="986" y="115" width="166" height="150" fill="#334155" class="box"/>
+  <text x="1010" y="153" class="label">Paper loop</text><text x="1010" y="184" class="small">Alpaca mleg</text><text x="1010" y="207" class="small">audit + exits</text><text x="1010" y="230" class="small">P&amp;L card</text>
+  <path d="M223 190 H260" class="arrow"/><path d="M475 190 H512" class="arrow"/><path d="M727 190 H764" class="arrow"/><path d="M939 190 H976" class="arrow"/>
+  <text x="48" y="340" class="small">Recorded mode is credential-free; paper mode is fail-closed and never supports live-money trading.</text>
+</svg>

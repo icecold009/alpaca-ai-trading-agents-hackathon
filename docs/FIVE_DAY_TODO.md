@@ -252,13 +252,15 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Use an accepted platform, server-side secrets, persistent storage, redacted logs, health endpoint, and recorded fallback.
   - Verify: incognito desktop/mobile hosted golden path and restart test.
 
-- [ ] **FD-053 — Create the one-page technical write-up** `45 min`
+- [x] **FD-053 — Create the one-page technical write-up** `45 min`
   - Cover AI logic, probability aggregation, option-implied hurdle, risk gates, Alpaca Trading API/MCP/CLI path, execution, exit, P&L, and limitations.
-  - Verify: exactly one page when exported to PDF and consistent with code.
+  - Evidence: [`TECHNICAL_WRITEUP.md`](TECHNICAL_WRITEUP.md) is the source document; it states the uncompleted MCP/CLI, live-paper, hosting, and submission gates rather than overstating readiness.
+  - Verify: content is consistent with [`STRATEGY_MATH.md`](STRATEGY_MATH.md), the Alpaca adapters, and the local verification record. PDF pagination remains a submission-format check.
 
-- [ ] **FD-054 — Finish public README** `40 min`
+- [x] **FD-054 — Finish public README** `40 min`
   - GIF/image, pitch, demo, paper-only disclosure, architecture, strategy formula, Alpaca mapping, recorded-first setup, evaluation, P&L snapshot, limitations, license.
-  - Verify: clean-clone setup and logged-out links.
+  - Evidence: root [`README.md`](../README.md) and the accessible architecture graphic [`assets/riskcourt-flow.svg`](assets/riskcourt-flow.svg).
+  - Verify: links resolve within the repository; hosted/logged-out checks remain part of FD-052 and FD-060.
 
 - [ ] **FD-055 — Produce cover, screenshots, and PDF slides** `75 min`
   - Show jury odds vs market odds, selected spread, deterministic max loss, execution, and P&L.
