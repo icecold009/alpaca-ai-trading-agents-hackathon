@@ -198,7 +198,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 
 **Outcome:** The agent autonomously forms forecasts, trades only valid edge, and visibly proves originality and safety.
 
-- [ ] **FD-041 — Define the model provider boundary** `25 min`
+- [x] **FD-041 — Define the model provider boundary** `25 min`
   - Structured outputs, timeout, one repair attempt, call/cost cap, deterministic test stub, and prompt/model version capture.
   - Verify: provider contract tests.
 
