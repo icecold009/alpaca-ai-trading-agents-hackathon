@@ -212,7 +212,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Acceptance: any partial failure or insufficient edge ends in abstention.
   - Verify: success, disagreement, provider failure, malformed output, timeout, and veto tests.
 
-- [ ] **FD-044 — Add prompt-injection and evidence-boundary tests** `40 min`
+- [x] **FD-044 — Add prompt-injection and evidence-boundary tests** `40 min`
   - Treat news/tool text as untrusted data and block instructions from changing tools, symbols, policy, or output schema.
   - Verify: ten adversarial cases and zero execution attempts.
 
