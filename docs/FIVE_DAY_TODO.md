@@ -202,7 +202,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Structured outputs, timeout, one repair attempt, call/cost cap, deterministic test stub, and prompt/model version capture.
   - Verify: provider contract tests.
 
-- [ ] **FD-042 — Implement three independent jurors** `60 min`
+- [x] **FD-042 — Implement three independent jurors** `60 min`
   - Juror A: price/market structure; Juror B: news/catalyst; Juror C: volatility/options structure.
   - Each returns probability, confidence stake, cited evidence, uncertainty, and invalidation—not an order.
   - Verify: valid, abstain, hallucinated ID, and injection cases per juror.
