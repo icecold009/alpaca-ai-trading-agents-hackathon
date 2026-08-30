@@ -269,7 +269,8 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 
 - [ ] **FD-056 — Record the 2–3 minute video** `75 min`
   - Hook in 15 seconds, live behavior, Alpaca proof, formula, safety, paper P&L, business/originality, and limitations.
-  - Verify: MP4/link accepted by form, under five minutes and 300 MB, captions, no secrets.
+  - Preparation evidence: [`VIDEO_RUN_OF_SHOW.md`](VIDEO_RUN_OF_SHOW.md) covers the approved narrative and identifies the live/hosted proof frame that must not be fabricated.
+  - Verify: MP4/link accepted by form, under five minutes and 300 MB, captions, no secrets. Recording remains user-owned until the live/hosted gates are green.
 
 - [x] **FD-057 — Draft all LabLab fields** `40 min`
   - Title ≤50 chars, summary ≤255 chars, long description ≥100 words, track, technologies, cover, video, slides, public repo, platform, app URL, account ID, and up to five social links.
