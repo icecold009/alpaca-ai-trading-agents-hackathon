@@ -284,7 +284,8 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 
 - [ ] **FD-059 — Freeze the release candidate** `25 min`
   - Full verification, clean tree, exact commit SHA, deployment IDs, consistent metrics, and no post-freeze feature work.
-  - Verify: release evidence file plus logged-out checks.
+  - Preparation evidence: [`RELEASE_EVIDENCE_TEMPLATE.md`](RELEASE_EVIDENCE_TEMPLATE.md) defines the required redacted linkage record and freeze rule.
+  - Verify: release evidence file plus logged-out checks after deployment and the live paper loop are complete.
 
 - [ ] **FD-060 — Submit and independently verify** `30 min`
   - Submit before September 4 at 8:30 PM IST with several hours of buffer.
