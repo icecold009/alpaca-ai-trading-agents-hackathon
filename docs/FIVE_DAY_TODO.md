@@ -232,7 +232,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - One live/read-only or paper path, one recorded trade, one abstention, one failure fallback; core story under two minutes.
   - Verify: timestamped rehearsal record.
 
-- [ ] **FD-049 — Commit Gate D** `10 min`
+- [x] **FD-049 — Commit Gate D** `10 min`
   - Commit: `feat(agent): deliver autonomous options prediction market`.
   - Gate: all 12 cases are safe and the differentiated mechanism is obvious within 15 seconds.
 
