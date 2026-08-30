@@ -280,6 +280,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 - [ ] **FD-058 — Publish up to five build-in-public posts** `P1 · User · 60 min`
   - Only if the release candidate is safe. Tag LabLab and Alpaca and submit exact links.
   - Never share keys, sensitive account details, or unqualified performance claims.
+  - Preparation evidence: [`SOCIAL_POST_DRAFTS.md`](SOCIAL_POST_DRAFTS.md) contains three unpublished, disclosure-safe drafts. Publishing remains optional and user-owned.
 
 - [ ] **FD-059 — Freeze the release candidate** `25 min`
   - Full verification, clean tree, exact commit SHA, deployment IDs, consistent metrics, and no post-freeze feature work.
