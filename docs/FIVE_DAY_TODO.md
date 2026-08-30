@@ -228,7 +228,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Recorded/live badges, market closed, missing quote, no edge, provider failure, Alpaca rejection, kill switch, keyboard, contrast, and reduced motion.
   - Verify: Axe plus manual keyboard/mobile pass and network-disabled E2E.
 
-- [ ] **FD-048 — Run five consecutive golden demos** `35 min`
+- [x] **FD-048 — Run five consecutive golden demos** `35 min`
   - One live/read-only or paper path, one recorded trade, one abstention, one failure fallback; core story under two minutes.
   - Verify: timestamped rehearsal record.
 
