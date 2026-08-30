@@ -240,7 +240,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 
 **Outcome:** Hosted, reproducible, consistent submission is completed before the official cutoff.
 
-- [ ] **FD-050 — Add full verification command and CI** `35 min`
+- [x] **FD-050 — Add full verification command and CI** `35 min`
   - Run backend tests/lint/types, frontend tests/build, fixture validation, 12-case evaluation, secret scan, and recorded E2E.
   - Verify: clean checkout produces one green report.
 
