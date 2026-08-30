@@ -216,7 +216,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
   - Treat news/tool text as untrusted data and block instructions from changing tools, symbols, policy, or output schema.
   - Verify: ten adversarial cases and zero execution attempts.
 
-- [ ] **FD-045 — Build a 12-case evaluation set** `60 min`
+- [x] **FD-045 — Build a 12-case evaluation set** `60 min`
   - Balance trade/abstain/veto/error; include stale quotes, illiquidity, no edge, disagreement, injection, duplicate, drawdown, and provider outage.
   - Verify: expected outcome for all 12; zero unauthorized orders and zero unknown evidence accepted.
 
