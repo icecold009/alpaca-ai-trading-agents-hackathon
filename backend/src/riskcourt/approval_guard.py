@@ -2,9 +2,13 @@
 
 import hashlib
 import json
+import os
+import tempfile
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import StrEnum
+from pathlib import Path
 from threading import Lock
 
 from riskcourt.domain import ApprovalArtifact, EvidenceItem, EvidenceType, TradeIntent
@@ -34,8 +38,11 @@ class ApprovalCheck:
 
 
 class IdempotencyRegistry:
-    def __init__(self) -> None:
-        self._requests: dict[str, str] = {}
+    """Reserve client IDs once, optionally persisting reservations across restarts."""
+
+    def __init__(self, path: Path | None = None) -> None:
+        self._path = path
+        self._requests: dict[str, str] = self._load(path)
         self._lock = Lock()
 
     def reserve(self, client_order_id: str, request_sha256: str) -> SubmissionAction:
@@ -43,10 +50,43 @@ class IdempotencyRegistry:
             existing = self._requests.get(client_order_id)
             if existing is None:
                 self._requests[client_order_id] = request_sha256
+                self._persist()
                 return SubmissionAction.SUBMIT
             if existing == request_sha256:
                 return SubmissionAction.REPLAY
             return SubmissionAction.REJECT
+
+    @staticmethod
+    def _load(path: Path | None) -> dict[str, str]:
+        if path is None or not path.exists():
+            return {}
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict) or any(
+            not isinstance(key, str) or not isinstance(value, str) for key, value in payload.items()
+        ):
+            raise ValueError("idempotency store must contain a string-to-string object")
+        return dict(payload)
+
+    def _persist(self) -> None:
+        if self._path is None:
+            return
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary_name = tempfile.mkstemp(
+            prefix=f".{self._path.name}.",
+            suffix=".tmp",
+            dir=self._path.parent,
+            text=True,
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+                json.dump(self._requests, handle, sort_keys=True, separators=(",", ":"))
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary_name, self._path)
+        finally:
+            with suppress(FileNotFoundError):
+                os.unlink(temporary_name)
 
 
 def create_approval_binding(

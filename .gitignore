@@ -1,5 +1,7 @@
 # Secrets and local configuration
 .env
+.riskcourt/
+.pytest-tmp/
 .env.*
 !.env.example
 *.pem

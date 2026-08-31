@@ -19,3 +19,8 @@ Validated controls:
 Remaining deployment gate: review hosted CORS/origin policy, response headers, server-side secret
 storage, log retention, and account-identifier handling after deployment exists. No live or paper
 order was submitted during this review.
+
+The repository now includes `scripts/verify_hosted.py`, a GET-only check for those release
+boundaries that validates `/healthz`, recorded-case reachability, fail-closed flags, and the
+exact frontend-origin CORS header without printing response payloads. It passed against a local
+recorded backend/frontend emulation; the real hosted deployment still requires a manual run.

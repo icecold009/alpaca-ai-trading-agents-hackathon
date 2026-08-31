@@ -1,7 +1,11 @@
 """Hash-chained decision events, replay projection, and sanitized export."""
 
 import hashlib
+import os
+import tempfile
+from contextlib import suppress
 from decimal import Decimal
+from pathlib import Path
 from typing import Self
 
 from pydantic import Field, JsonValue, TypeAdapter
@@ -136,6 +140,63 @@ class AppendOnlyDecisionLog:
         return log
 
 
+class PersistentDecisionLog:
+    """Persist an append-only decision log with atomic, restart-safe writes.
+
+    The in-memory :class:`AppendOnlyDecisionLog` remains the source of truth for
+    validation and projection. This wrapper only adds a small JSON persistence
+    boundary so a paper worker can recover its audit chain after a restart.
+    """
+
+    def __init__(self, case_id: str, path: Path) -> None:
+        self.case_id = case_id
+        self.path = path
+        if path.exists():
+            payload = path.read_text(encoding="utf-8")
+            self._log = AppendOnlyDecisionLog.from_json(case_id, payload)
+        else:
+            self._log = AppendOnlyDecisionLog(case_id)
+
+    @property
+    def events(self) -> tuple[ChainedDecisionEvent, ...]:
+        return self._log.events
+
+    def append(self, event: DecisionEvent) -> ChainedDecisionEvent:
+        chained = self._log.append(event)
+        self._atomic_write(self._log.to_json())
+        return chained
+
+    def verify(self) -> None:
+        self._log.verify()
+
+    def project(self) -> DecisionProjection:
+        return self._log.project()
+
+    def export_decision_card(self) -> DecisionCard:
+        return self._log.export_decision_card()
+
+    def to_json(self) -> str:
+        return self._log.to_json()
+
+    def _atomic_write(self, payload: str) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        fd, temporary_name = tempfile.mkstemp(
+            prefix=f".{self.path.name}.",
+            suffix=".tmp",
+            dir=self.path.parent,
+            text=True,
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+                handle.write(payload)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary_name, self.path)
+        finally:
+            with suppress(FileNotFoundError):
+                os.unlink(temporary_name)
+
+
 def _event_hash(event: DecisionEvent, previous_hash: str | None) -> str:
     material = f"{previous_hash or 'GENESIS'}|{event.model_dump_json()}"
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
@@ -143,7 +204,10 @@ def _event_hash(event: DecisionEvent, previous_hash: str | None) -> str:
 
 def _sanitize(value: JsonValue, key: str | None = None) -> JsonValue:
     if key is not None and (
-        "secret" in key.lower() or "api_key" in key.lower() or "account_id" in key.lower()
+        "secret" in key.lower()
+        or "api_key" in key.lower()
+        or "account_id" in key.lower()
+        or "order_id" in key.lower()
     ):
         return "[REDACTED]"
     if isinstance(value, dict):

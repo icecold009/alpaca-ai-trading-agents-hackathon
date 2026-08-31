@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     alpaca_paper_base_url: AnyHttpUrl = AnyHttpUrl("https://paper-api.alpaca.markets")
     riskcourt_live_trading: bool = False
     alpaca_live_trading: bool = False
+    riskcourt_state_dir: Path = PROJECT_ROOT / ".riskcourt"
+    riskcourt_allowed_origins: str = ""
 
     @model_validator(mode="after")
     def reject_unsafe_configuration(self) -> Self:
@@ -60,3 +62,13 @@ class Settings(BaseSettings):
     @staticmethod
     def _secret_has_value(value: SecretStr | None) -> bool:
         return value is not None and bool(value.get_secret_value().strip())
+
+    @property
+    def allowed_origins(self) -> tuple[str, ...]:
+        """Return the exact configured CORS allowlist, never a wildcard."""
+
+        return tuple(
+            origin.strip().rstrip("/")
+            for origin in self.riskcourt_allowed_origins.split(",")
+            if origin.strip()
+        )

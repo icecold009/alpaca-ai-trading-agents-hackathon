@@ -1,9 +1,11 @@
 """FastAPI application entry point."""
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from riskcourt import __version__
 from riskcourt.case_repository import RecordedCaseRepository
+from riskcourt.health import router as health_router
 from riskcourt.routes import router as recorded_cases_router
 from riskcourt.settings import Settings
 
@@ -24,6 +26,15 @@ def create_app(
     application.state.recorded_case_repository = (
         recorded_case_repository or RecordedCaseRepository()
     )
+    if resolved_settings.allowed_origins:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=list(resolved_settings.allowed_origins),
+            allow_credentials=False,
+            allow_methods=["GET"],
+            allow_headers=["Accept", "Content-Type"],
+        )
+    application.include_router(health_router)
     application.include_router(recorded_cases_router)
     return application
 

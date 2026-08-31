@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { recordedCases } from "./recordedCases";
+import { loadRecordedCases } from "./runtime";
 
 const jurorNames: Record<string, string> = {
   juror_market: "Market structure",
@@ -71,11 +72,25 @@ function money(value: string) {
 }
 
 function App() {
+  const [cases, setCases] = useState(recordedCases);
   const [selectedCaseId, setSelectedCaseId] = useState(recordedCases[0].case_id);
   const [replayState, setReplayState] = useState<ReplayState>("recorded");
+  const [runtimeSource, setRuntimeSource] = useState<"fixture" | "api">("fixture");
+  useEffect(() => {
+    if (import.meta.env.MODE === "test") return;
+    let active = true;
+    void loadRecordedCases().then((remoteCases) => {
+      if (!active || !remoteCases?.length) return;
+      setRuntimeSource("api");
+      setCases(remoteCases);
+      setSelectedCaseId(remoteCases[0].case_id);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   const selectedCase =
-    recordedCases.find((recordedCase) => recordedCase.case_id === selectedCaseId) ??
-    recordedCases[0];
+    cases.find((recordedCase) => recordedCase.case_id === selectedCaseId) ?? cases[0];
   const isApproved =
     selectedCase.verdict.decision === "approve" || selectedCase.verdict.decision === "resize";
   const execution = selectedCase.executions.at(-1);
@@ -83,11 +98,20 @@ function App() {
 
   return (
     <main className="min-h-screen bg-[#050816] px-4 py-8 text-slate-100 sm:px-6 sm:py-12">
+      <a
+        href="#case-heading"
+        className="sr-only z-50 rounded-lg bg-cyan-300 px-4 py-2 font-semibold text-slate-950 focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+      >
+        Skip to decision
+      </a>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
         <header className="flex flex-col gap-5 border-b border-white/10 pb-8 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-4">
-            <p className="w-fit rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-sm font-medium text-emerald-200">
-              Recorded mode · no credentials required
+            <p className="flex w-fit items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-sm font-medium text-emerald-200">
+              <span className="h-2 w-2 rounded-full bg-emerald-300" aria-hidden="true" />
+              {runtimeSource === "api"
+                ? "Recorded API · read-only"
+                : "Recorded mode · no credentials required"}
             </p>
             <div>
               <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-6xl">
@@ -102,11 +126,16 @@ function App() {
           <div className="text-sm text-slate-400">
             <span className="block uppercase tracking-[0.18em] text-slate-400">Recorded at</span>
             <time dateTime={selectedCase.as_of}>{new Date(selectedCase.as_of).toUTCString()}</time>
+            <span className="mt-2 block text-xs text-slate-300">
+              {runtimeSource === "api"
+                ? "Source: hosted recorded-case API"
+                : "Source: bundled fixture"}
+            </span>
           </div>
         </header>
 
         <nav aria-label="Recorded cases" className="grid gap-3 sm:grid-cols-2">
-          {recordedCases.map((recordedCase) => {
+          {cases.map((recordedCase) => {
             const selected = recordedCase.case_id === selectedCase.case_id;
             return (
               <button
@@ -187,7 +216,11 @@ function App() {
               <p className="text-sm uppercase tracking-[0.18em] text-slate-400">
                 {selectedCase.underlying_symbol} · Recorded decision
               </p>
-              <h2 id="case-heading" className="mt-1 text-2xl font-semibold text-white sm:text-3xl">
+              <h2
+                id="case-heading"
+                tabIndex={-1}
+                className="mt-1 text-2xl font-semibold text-white outline-none sm:text-3xl"
+              >
                 Jury odds vs. market hurdle
               </h2>
             </div>
@@ -254,6 +287,10 @@ function App() {
               accent={isApproved ? "positive" : "negative"}
             />
           </div>
+          <OddsComparison
+            juryProbability={selectedCase.strategy.jury_probability}
+            hurdle={selectedCase.strategy.market_hurdle}
+          />
           <p className="mt-4 text-sm text-slate-400">
             Minimum edge required:{" "}
             <span className="font-semibold text-slate-200">
@@ -332,7 +369,7 @@ function App() {
                   value={`${selectedCase.verdict.approved_quantity} contract`}
                 />
                 <RecordValue label="Order status" value={execution.status} />
-                <RecordValue label="Client order ID" value={execution.client_order_id} mono />
+                <RecordValue label="Paper order reference" value="Private reference redacted" />
                 <RecordValue
                   label="Paper P&L"
                   value={`${Number(pnl.unrealized_pnl) >= 0 ? "+" : ""}${money(pnl.unrealized_pnl)}`}
@@ -400,6 +437,43 @@ function RecordValue({
       >
         {value}
       </dd>
+    </div>
+  );
+}
+
+function OddsComparison({ juryProbability, hurdle }: { juryProbability: string; hurdle: string }) {
+  const jury = Math.max(0, Math.min(1, Number(juryProbability)));
+  const market = Math.max(0, Math.min(1, Number(hurdle)));
+  return (
+    <div
+      className="rounded-2xl border border-cyan-300/15 bg-slate-950/50 p-4"
+      role="img"
+      aria-label={`Calibrated jury odds ${percent(juryProbability)} versus option-implied hurdle ${percent(hurdle)}`}
+    >
+      <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.16em] text-slate-400">
+        <span>Decision threshold</span>
+        <span className="text-cyan-200">Jury clears hurdle</span>
+      </div>
+      <div className="relative mt-4 h-3 rounded-full bg-white/10">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full bg-cyan-300/80"
+          style={{ width: `${jury * 100}%` }}
+        />
+        <div
+          className="absolute -top-1 h-5 w-0.5 bg-amber-200 shadow-[0_0_12px_rgba(253,230,138,0.7)]"
+          style={{ left: `calc(${market * 100}% - 1px)` }}
+        />
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-400">
+        <span className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-cyan-300" aria-hidden="true" />
+          Jury {percent(juryProbability)}
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="h-3 w-0.5 bg-amber-200" aria-hidden="true" />
+          Hurdle {percent(hurdle)}
+        </span>
+      </div>
     </div>
   );
 }

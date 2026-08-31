@@ -7,7 +7,8 @@ Complete this file only after the hosted app, live paper loop, video, and submis
 - Release branch: `codex/riskcourt-mvp`
 - Candidate commit SHA: `PENDING — record after the final approved change`
 - Verification command: `backend\\.venv\\Scripts\\python.exe scripts\\verify.py --skip-e2e`
-- Local verifier result: `PASS at 31bc354; rerun after the final release change`
+- Local verifier result: `PASS on current working tree after paper-runner, lifecycle-store, and hosted-checker changes; record SHA after final commit`
+- Local hosted-contract emulation: `PASS — recorded frontend/backend; healthz, recorded cases, fail-closed flags, and exact CORS`
 - Public repository URL: `PENDING`
 
 ## Hosted verification

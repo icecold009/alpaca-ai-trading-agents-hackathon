@@ -48,9 +48,13 @@ def select_vertical_spreads(
     if not supported_widths or any(width <= 0 for width in supported_widths):
         raise ValueError("supported widths must be positive")
 
+    minimum_expiry = as_of.date() + timedelta(days=7)
+    maximum_expiry = as_of.date() + timedelta(days=21)
+
     eligible = [
         contract
         for contract in chain.contracts
+        if minimum_expiry <= contract.expiry <= maximum_expiry
         if _liquid(contract, chain, as_of, maximum_quote_age, maximum_relative_spread)
     ]
     candidates: list[SpreadCandidate] = []
@@ -88,7 +92,10 @@ def _liquid(
         return False
     if contract.underlying_symbol != chain.underlying_symbol:
         return False
-    quote = _quote(contract)
+    try:
+        quote = _quote(contract)
+    except ValueError:
+        return False
     verdict = assess_contract_liquidity(
         ContractSnapshot(
             quote=quote,

@@ -47,12 +47,21 @@ backend\.venv\Scripts\python.exe scripts\verify.py --skip-e2e
 
 For paper mode, copy [`.env.example`](.env.example) to an ignored `.env`, set paper credentials only, and keep `RISKCOURT_MODE=paper`. The application rejects live-trading flags and non-official Alpaca endpoints. Never commit keys or an account ID.
 
+The backend exposes a sanitized `GET /healthz` readiness probe and the recorded-case API. A hosted frontend may set `VITE_RISKCOURT_API_URL` using [`frontend/.env.example`](frontend/.env.example); failed, missing, or malformed API responses automatically fall back to the bundled recorded fixtures. No public route submits or cancels orders.
+
+For credentialed operator verification, the paper-cycle command is explicitly
+dry-run by default and persists its audit chain only when `--submit` is passed:
+see [`backend/README.md`](backend/README.md). After deployment, run the
+GET-only hosted release checker [`scripts/verify_hosted.py`](scripts/verify_hosted.py)
+against the public frontend and backend origins. It refuses to treat a missing
+health or recorded-case endpoint as a release pass.
+
 ## Evidence and current boundary
 
 - Twelve credential-free evaluation cases cover trade, abstain, veto, and error paths: [`fixtures/evaluation/fd045.json`](fixtures/evaluation/fd045.json).
 - Rehearsal timestamps, responsive/accessibility checks, and Gate D evidence are recorded in [`docs/DEMO_REHEARSAL.md`](docs/DEMO_REHEARSAL.md) and [`docs/GATE_D_EVIDENCE.md`](docs/GATE_D_EVIDENCE.md).
 - Submission visuals are available as the [cover image](docs/assets/RiskCourt-cover.png), [PDF slides](docs/assets/RiskCourt-submission-slides.pdf), and [editable PowerPoint deck](docs/assets/RiskCourt-submission-slides.pptx).
-- The Alpaca Trading API read adapters and guarded multi-leg request mapping are implemented. The official Alpaca MCP/CLI proof, a market-open live paper order, hosted deployment, and final LabLab submission remain explicit release gates; no live-money path exists.
+- The Alpaca Trading API read adapters, restart-safe paper cycle, guarded multi-leg request mapping, lifecycle persistence, P&L snapshots, and deterministic exits are implemented. The official Alpaca MCP/CLI proof, a market-open live paper order, a logged-out public host, hosted deployment evidence, and final LabLab submission remain explicit release gates; no live-money path exists. See the private capture template [`docs/ALPACA_TOOL_EVIDENCE.md`](docs/ALPACA_TOOL_EVIDENCE.md).
 - Security and claim review: [`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md). Submission requirements and account safeguards: [`docs/EVENT_REQUIREMENTS.md`](docs/EVENT_REQUIREMENTS.md) and [`docs/SUBMISSION_CHECKLIST.md`](docs/SUBMISSION_CHECKLIST.md).
 
 ## License

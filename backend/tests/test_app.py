@@ -95,3 +95,50 @@ def test_recorded_case_api_returns_404_for_unknown_case() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Recorded case not found"}
+
+
+def test_healthz_is_sanitized_and_reports_recorded_fallback() -> None:
+    settings = Settings(
+        riskcourt_mode=RuntimeMode.RECORDED,
+        alpaca_api_key_id=None,
+        alpaca_api_secret_key=None,
+    )
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/healthz")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload == {
+        "status": "ok",
+        "ready": True,
+        "mode": "recorded",
+        "recorded_fallback": True,
+        "paper_credentials_configured": False,
+        "live_trading_enabled": False,
+    }
+    assert "secret" not in response.text.lower()
+
+
+def test_cors_uses_exact_allowlist_without_order_methods() -> None:
+    settings = Settings(
+        riskcourt_mode=RuntimeMode.RECORDED,
+        riskcourt_allowed_origins="https://demo.example, https://demo.example/",
+    )
+    with TestClient(create_app(settings)) as client:
+        response = client.options(
+            "/healthz",
+            headers={
+                "Origin": "https://demo.example",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "https://demo.example"
+    assert "POST" not in response.headers["access-control-allow-methods"]
+
+
+def test_public_app_has_no_order_mutation_routes() -> None:
+    with TestClient(app) as client:
+        assert client.post("/api/orders").status_code == 404
+        assert client.delete("/api/orders/example").status_code == 404

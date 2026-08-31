@@ -51,7 +51,8 @@ class AlpacaOrderAdapter:
                     paper=True,
                     url_override=str(settings.alpaca_paper_base_url).rstrip("/"),
                 ),
-            )
+            ),
+            registry=IdempotencyRegistry(settings.riskcourt_state_dir / "idempotency.json"),
         )
 
     @staticmethod

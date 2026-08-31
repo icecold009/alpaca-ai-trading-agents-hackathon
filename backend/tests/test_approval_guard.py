@@ -1,5 +1,6 @@
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -166,3 +167,13 @@ def test_conflicting_idempotency_key_is_rejected() -> None:
 
     assert registry.reserve("order-1", "a" * 64) is SubmissionAction.SUBMIT
     assert registry.reserve("order-1", "b" * 64) is SubmissionAction.REJECT
+
+
+def test_idempotency_registry_recovers_reservations_after_restart(tmp_path: Path) -> None:
+    path = tmp_path / "idempotency.json"
+    first = IdempotencyRegistry(path)
+    assert first.reserve("order-1", "a" * 64) is SubmissionAction.SUBMIT
+
+    restored = IdempotencyRegistry(path)
+    assert restored.reserve("order-1", "a" * 64) is SubmissionAction.REPLAY
+    assert restored.reserve("order-1", "b" * 64) is SubmissionAction.REJECT

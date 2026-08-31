@@ -67,3 +67,12 @@ def test_stale_and_missing_quote_contracts_are_excluded() -> None:
     )
     missing = contract("641", OptionRight.CALL).model_copy(update={"bid": None})
     assert select_vertical_spreads(chain(stale, missing), as_of=NOW) == ()
+
+
+def test_crossed_option_quotes_are_excluded_without_raising() -> None:
+    crossed = contract("640", OptionRight.CALL).model_copy(
+        update={"bid": Decimal("1.20"), "ask": Decimal("1.10")}
+    )
+    valid_short = contract("641", OptionRight.CALL)
+
+    assert select_vertical_spreads(chain(crossed, valid_short), as_of=NOW) == ()

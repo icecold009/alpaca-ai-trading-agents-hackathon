@@ -16,6 +16,8 @@ describe("RiskCourt recorded cases", () => {
     expect(screen.getByText("Probability edge margin")).toBeInTheDocument();
     expect(screen.getAllByText("Calibration")).toHaveLength(3);
     expect(screen.getByText(/Minimum edge required:/)).toBeInTheDocument();
+    expect(screen.getByText("Private reference redacted")).toBeInTheDocument();
+    expect(screen.queryByText("riskcourt-case-edge-positive-v1")).not.toBeInTheDocument();
   });
 
   it("switches to the veto and back without fetching data", async () => {

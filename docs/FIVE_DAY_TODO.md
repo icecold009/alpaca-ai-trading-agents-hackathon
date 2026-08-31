@@ -18,6 +18,25 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 - Every order has a deterministic maximum-loss cap, idempotent client order ID, exit condition, and audit record.
 - Recorded demo and live paper mode must tell the same story and be visibly distinguished.
 
+## 2026-08-30 implementation checkpoint
+
+The local feature-branch implementation now includes the fail-closed paper cycle,
+restart-safe decision/idempotency/lifecycle state, deterministic P&L recording and
+exit submission, sanitized `/healthz`, exact CORS configuration, and an optional
+hosted recorded-case API loader with fixture fallback. FD-035, FD-036, FD-037, and
+FD-038 still remain unchecked here until their required external evidence is captured:
+official Alpaca MCP/CLI transcript, one market-open paper order with lifecycle/P&L
+linkage, and hosted logged-out verification. No external submission gate is implied.
+
+The operator boundary is now complete locally: `backend/scripts/run_paper_cycle.py`
+does a read-only Alpaca preflight unless `--submit` is explicitly supplied, loads a
+private provider only from `module:attribute`, refuses unknown existing option risk,
+persists a unique hash-chained audit file, and emits sanitized evidence. The
+repository-root `scripts/verify_hosted.py` performs GET-only frontend, health,
+recorded-case, fail-closed, and exact-CORS checks. These tools make FD-035–FD-038
+repeatable but do not manufacture the required official transcript, live paper
+order, credentials, or public deployment evidence.
+
 ## Already resolved
 
 - [x] **FD-001 — Verify the official cutoff**

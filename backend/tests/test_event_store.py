@@ -46,7 +46,7 @@ def populated_log() -> AppendOnlyDecisionLog:
         event(
             2,
             DecisionEventType.EXECUTION_UPDATED,
-            {"status": "filled"},
+            {"status": "filled", "client_order_id": "paper-order-sensitive"},
         )
     )
     log.append(
@@ -77,6 +77,7 @@ def test_persist_export_and_replay_round_trip(tmp_path: Path) -> None:
     assert projection.unrealized_pnl == 25
     assert card.head_hash == replayed.events[-1].event_hash
     assert "paper-account-sensitive" not in card_json
+    assert "paper-order-sensitive" not in card_json
     assert "[REDACTED]" in card_json
 
 
