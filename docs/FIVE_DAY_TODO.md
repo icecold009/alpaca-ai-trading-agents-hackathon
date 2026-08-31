@@ -37,6 +37,74 @@ recorded-case, fail-closed, and exact-CORS checks. These tools make FD-035–FD-
 repeatable but do not manufacture the required official transcript, live paper
 order, credentials, or public deployment evidence.
 
+## Personal submission checklist — keep this section current
+
+This is the single handoff list for the remaining work. The detailed FD items below
+remain the canonical specifications; check a line here only when its evidence exists.
+`[x]` means Codex completed and locally verified. `[ ]` means the action is still
+user-owned or depends on an external service.
+
+### Completed by Codex
+
+- [x] Paper-only runtime and fail-closed account, market, chain, jury, hurdle, risk,
+  approval, order, lifecycle, P&L, exit, and audit orchestration implemented.
+- [x] Restart-safe idempotency, hash-chained decision events, and normalized lifecycle
+  persistence implemented; raw provider/order identifiers stay out of public output.
+- [x] Recorded UI uses API-first loading with bundled fixture fallback, read-only labels,
+  accessible keyboard flow, jury-vs-hurdle comparison, and redacted order references.
+- [x] Sanitized `/healthz`, recorded-case API, exact CORS allowlist, and GET-only hosted
+  checker implemented.
+- [x] Official-tool capture template, release-evidence template, README, operator docs,
+  and submission-field draft updated without secrets or unsupported claims.
+- [x] Local verification passed: backend tests/lint/mypy/coverage, frontend tests/lint/
+  typecheck/build/format, working-tree secret scan, and full Chromium E2E/rehearsal.
+- [x] Feature-branch checkpoints recorded at `1155689` and `68912d3`; current branch
+  must remain separate from `main`.
+
+### Manual release gates
+
+- [ ] Confirm the final Alpaca account is brand-new, dedicated to this hackathon, and
+  starts at exactly `$100,000`; record only a private confirmation, never the account ID
+  in source or chat.
+- [ ] Recheck current paper options permissions. Use Level 3 for the preferred vertical
+  spread; if only Level 2 is available, switch the release claims and demo to a long
+  call/put path before continuing.
+- [ ] Capture the official Alpaca MCP or CLI transcript: version/availability, paper
+  account read, options level, market clock, SPY chain, order schema/dry-run, separated
+  read versus mutation capabilities, timestamps, and redacted identifiers.
+- [ ] During market hours, run the read-only preflight first, then explicitly run one
+  tiny paper cycle with a private provider and known daily P&L:
+  `backend\\.venv\\Scripts\\python.exe backend\\scripts\\run_paper_cycle.py --submit --provider <private_module>:<factory> --daily-pnl <known_value> --case-id <new_case_id>`.
+- [ ] Confirm the order is one eligible SPY defined-risk spread (or documented Level-2
+  fallback), then privately preserve the account/order linkage, approval, lifecycle
+  terminal state, Decision Card hash, and realized/unrealized paper P&L.
+- [ ] Verify deterministic exit behavior (profit target, protective loss, edge decay,
+  expiry, and kill switch) and preserve the resulting private evidence.
+- [ ] Deploy backend and frontend on an accepted public host with server-side secrets,
+  persistent state, recorded fallback, exact CORS, and no live-trading configuration.
+- [ ] Set the frontend API base URL to the deployed read-only backend and run the hosted
+  checker from the repository root; all checks must pass:
+  `backend\\.venv\\Scripts\\python.exe scripts\\verify_hosted.py --frontend-url <public_frontend> --backend-url <public_backend>`.
+- [ ] Test the deployed app logged out on desktop and mobile: recorded trade, veto/
+  abstain, market closed, provider failure, Alpaca rejection, keyboard/accessibility,
+  console/network errors, cold start, restart, health, headers, CORS, and redacted logs.
+- [ ] Push the exact reviewed feature-branch SHA to the public repository and verify the
+  README, setup, demo URL, license, disclosure, and no-secret scan from a clean checkout.
+- [ ] Record the 2–3 minute video from `docs/VIDEO_RUN_OF_SHOW.md`; add captions, use
+  only verified live/hosted evidence, redact secrets/IDs/private URLs/local paths, keep
+  it under five minutes and 300 MB, and verify logged-out playback.
+- [ ] Publish only the approved disclosure-safe social posts, tag LabLab and Alpaca,
+  and record up to five exact public links without account IDs or performance claims.
+- [ ] Complete `docs/LABLAB_FIELDS_DRAFT.md` against the live form: title/summary limits,
+  track/tags, public repo, demo, cover, video, PDF slides, intended account-ID field,
+  and social links; replace every `PENDING` only with verified values.
+- [ ] Freeze: stop feature work, rerun the full verifier and E2E, confirm clean tree,
+  final SHA, green CI, deployment state, paper evidence, media, and redacted release
+  evidence in `docs/RELEASE_EVIDENCE_TEMPLATE.md`.
+- [ ] Submit several hours before the displayed LabLab/Devpost cutoff, reopen the
+  project logged out, verify every field/link/media/repository/demo, and preserve the
+  confirmation URL and timestamp privately.
+
 ## Already resolved
 
 - [x] **FD-001 — Verify the official cutoff**
