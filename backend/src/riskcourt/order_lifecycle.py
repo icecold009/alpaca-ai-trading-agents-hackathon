@@ -52,7 +52,7 @@ class OrderLifecycleTracker:
             }
             and update.status != self._snapshot.status
         ):
-            raise ValueError("order update regressed lifecycle state")
+            raise ValueError("order update changed terminal lifecycle state")
         self._snapshot = update
         return update
 
