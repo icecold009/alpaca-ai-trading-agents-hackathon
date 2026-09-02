@@ -1,16 +1,29 @@
 name: Verify
 
 on:
-  push:
   pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
 
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
+    name: Credential-free local verification
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      RISKCOURT_MODE: recorded
+      RISKCOURT_LIVE_TRADING: "false"
+      ALPACA_LIVE_TRADING: "false"
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -30,5 +43,7 @@ jobs:
         run: npm ci --prefix frontend
       - name: Install Chromium
         run: npx --prefix frontend playwright install --with-deps chromium
-      - name: Run full verification
+      # This gate is intentionally local-only: it does not use production
+      # secrets, contact Alpaca, deploy, place paper orders, or mutate a DB.
+      - name: Run credential-free local verification
         run: python scripts/verify.py
