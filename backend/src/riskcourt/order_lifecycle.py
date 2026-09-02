@@ -41,6 +41,16 @@ class OrderLifecycleTracker:
         update = self._translate(order, LifecycleConnection.CONNECTED)
         if update.client_order_id != self._snapshot.client_order_id:
             raise ValueError("order update client_order_id changed")
+        if (
+            self._snapshot.status
+            in {
+                ExecutionStatus.FILLED,
+                ExecutionStatus.CANCELED,
+                ExecutionStatus.REJECTED,
+            }
+            and update.status != self._snapshot.status
+        ):
+            raise ValueError("order update changed terminal lifecycle state")
         if _rank(update.status) < _rank(self._snapshot.status):
             raise ValueError("order update regressed lifecycle state")
         self._snapshot = update
