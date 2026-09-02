@@ -55,3 +55,17 @@ def test_tracker_rejects_regressions_and_identity_changes() -> None:
     changed.client_order_id = "other"
     with pytest.raises(ValueError, match="client_order_id"):
         tracker.apply(changed)
+
+
+@pytest.mark.parametrize(
+    ("initial", "next_status"),
+    [
+        ("filled", "canceled"),
+        ("canceled", "rejected"),
+        ("rejected", "filled"),
+    ],
+)
+def test_tracker_rejects_terminal_state_changes(initial: str, next_status: str) -> None:
+    tracker = OrderLifecycleTracker(order(initial))
+    with pytest.raises(ValueError, match="terminal lifecycle"):
+        tracker.apply(order(next_status))
