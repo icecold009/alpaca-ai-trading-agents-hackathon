@@ -63,7 +63,7 @@ user-owned or depends on an external service.
 
 ### Manual release gates
 
-- [ ] Confirm the final Alpaca account is brand-new, dedicated to this hackathon, and
+- [x] Confirm the final Alpaca account is brand-new, dedicated to this hackathon, and
   starts at exactly `$100,000`; record only a private confirmation, never the account ID
   in source or chat.
 - [ ] Recheck current paper options permissions. Use Level 3 for the preferred vertical
@@ -124,10 +124,10 @@ user-owned or depends on an external service.
 
 ## Immediate user verification — complete before the first judged trade
 
-- [ ] **FD-006 — Verify the final competition account** `User · 10 min`
+- [x] **FD-006 — Verify the final competition account** `User · 10 min`
   - Confirm the created account is brand-new, dedicated to this hackathon, and has never been reused.
   - Confirm starting equity is exactly $100,000.
-  - Evidence: the sanitized paper read confirmed the $100,000 equity predicate; brand-new/dedicated status still requires user confirmation.
+  - Evidence: user privately confirmed brand-new/dedicated/never-reused status and exact $100,000 starting equity; the sanitized paper read returned an active paper account with equity present, zero positions, zero pending orders, and no trading block.
   - Record only `confirmed/not confirmed` locally; do not add the account ID or keys to the public repository.
 
 - [x] **FD-007 — Verify options permissions** `User + Backend · 10 min`
