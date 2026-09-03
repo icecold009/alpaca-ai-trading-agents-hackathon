@@ -136,8 +136,9 @@ user-owned or depends on an external service.
   - If only Level 2 is available by the end of Day 2, activate the long-call/long-put fallback and remove spread claims.
   - Evidence: sanitized paper read returned approved level 3 and trading level 3; no fallback is required.
 
-- [ ] **FD-008 — Freeze the revised product thesis** `User · 10 min`
+- [x] **FD-008 — Freeze the revised product thesis** `User · 10 min`
   - Approve: “RiskCourt is an AI prediction market for options alpha: agents stake calibrated probabilities, and deterministic policy trades only when jury odds beat option-implied odds by a safe margin.”
+  - Evidence: user approved the revised product thesis; later changes must not expand scope.
   - Any change after this task must remove equal or greater scope.
 
 ## Day 1 — Eligible skeleton and offline story
