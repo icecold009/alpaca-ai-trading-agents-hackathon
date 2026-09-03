@@ -66,7 +66,7 @@ user-owned or depends on an external service.
 - [x] Confirm the final Alpaca account is brand-new, dedicated to this hackathon, and
   starts at exactly `$100,000`; record only a private confirmation, never the account ID
   in source or chat.
-- [ ] Recheck current paper options permissions. Use Level 3 for the preferred vertical
+- [x] Recheck current paper options permissions. Use Level 3 for the preferred vertical
   spread; if only Level 2 is available, switch the release claims and demo to a long
   call/put path before continuing.
 - [ ] Capture the official Alpaca MCP or CLI transcript: version/availability, paper
