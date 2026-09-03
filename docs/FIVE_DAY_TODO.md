@@ -258,7 +258,7 @@ user-owned or depends on an external service.
   - Generate only same-underlying, same-expiry, supported-width, liquid vertical debit spreads.
   - Verify: candidate ordering is deterministic and every candidate has reconstructable max loss/break-even.
 
-- [ ] **FD-035 — Connect Alpaca MCP or CLI requirement** `35 min`
+- [x] **FD-035 — Connect Alpaca MCP or CLI requirement** `35 min`
   - Preferred: MCP for read-only account/market research and CLI for doctor/schema/dry-run evidence.
   - Acceptance: execution permission stays outside AI research tools.
   - Verify: sanitized transcript and enabled-tool inventory.
