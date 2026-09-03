@@ -26,9 +26,10 @@ Options approval level: PASS — trading level 3; approval level 3
 Market clock: PASS — is_open=true; API timestamps [REDACTED]
 SPY option chain: PASS — 100 call snapshots; expiry 2026-09-03; strike range 420-757; contract references [REDACTED]
 Order schema/dry-run: PASS — order_class=mleg; time_in_force=day; type=market; qty=1; 2 legs; position_intents=buy_to_open,sell_to_open; no submission
+Live paper order lifecycle: PASS — one-contract mleg day-limit; client reference [REDACTED]; status new -> canceled; filled_qty 0; positions 0
 Read capability inventory: PASS — profile list, account get, clock, option chain, order list, position list, order schema, dry-run
-Mutation capability inventory: NOT USED — trading write permission not granted; no order mutation, cancel, or position close executed
-Transcript hash: sha256:ad30e1646ecd842126cb7fa08a3c18c875863768946cd93a2691d396b99d0b00
+Mutation capability inventory: PAPER ONLY, APPROVED — order submit and cancel used; no live-account mutation
+Transcript hash: sha256:29698b3553bd13ff144179d509c348ad4fb7196d598c70b534ef6049dddc4f73
 ```
 
 Store the raw transcript and screenshots outside the public repository. Only the

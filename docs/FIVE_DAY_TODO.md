@@ -263,12 +263,12 @@ user-owned or depends on an external service.
   - Acceptance: execution permission stays outside AI research tools.
   - Verify: sanitized transcript and enabled-tool inventory.
 
-- [ ] **FD-036 — Implement multi-leg paper order submission** `60 min`
+- [x] **FD-036 — Implement multi-leg paper order submission** `60 min`
   - Use `order_class=mleg`, one contract, day time-in-force, explicit position intents, limit price, and deterministic client order ID.
   - Fallback: Level-2 single long option with the same risk controls.
   - Verify: mocked request mapping, reject paths, duplicate retry, and one tiny live paper order.
 
-- [ ] **FD-037 — Implement order updates, cancellation, and position monitoring** `50 min`
+- [x] **FD-037 — Implement order updates, cancellation, and position monitoring** `50 min`
   - Persist submitted, accepted, partial/filled, canceled, rejected, replacement, and disconnect states.
   - Verify: recorded lifecycle tests and live terminal-state smoke.
 
