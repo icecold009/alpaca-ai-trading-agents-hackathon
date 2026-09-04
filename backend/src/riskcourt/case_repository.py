@@ -5,6 +5,7 @@ from pathlib import Path
 from riskcourt.domain import ContractModel, Identifier, Ticker, VerdictDecision
 from riskcourt.recorded_case import RecordedCase
 
+
 def _default_cases_dir() -> Path:
     """Find checked-in fixtures from both a source checkout and an installed app."""
 
