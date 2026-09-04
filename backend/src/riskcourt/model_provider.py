@@ -13,7 +13,7 @@ from riskcourt.domain import ContractModel, Identifier
 
 
 class ProviderUnavailable(RuntimeError):
-    pass
+    """Raised when the optional model provider cannot complete a request."""
 
 
 class ProviderRequest(ContractModel):

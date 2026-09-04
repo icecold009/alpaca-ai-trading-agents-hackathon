@@ -8,6 +8,18 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 
 **MVP:** An autonomous options agent whose AI jurors form a calibrated probability market and trade only when their aggregated probability exceeds the option-implied break-even hurdle by a safety margin.
 
+## Current release snapshot — September 4, 2026
+
+The release baseline is now published on `main` at `afc69321984183df859d3437ab6f38ba2e2bb6a9`.
+The Render frontend and backend both track `main`, run the recorded-only path, and pass the
+GET-only hosted checker, including exact CORS and fail-closed runtime flags. The public demo is
+available at `https://riskcourt-frontend.onrender.com`.
+
+The remaining checklist items are external or user-owned: final account confirmation and private
+paper evidence, mobile/cold-start review, the video, optional social posts, and final LabLab
+submission. Any code cleanup after this snapshot must be merged and redeployed before it is
+described as part of the hosted release.
+
 ## Non-negotiable scope
 
 - Alpaca Trading API plus Alpaca MCP or CLI.
@@ -18,7 +30,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 - Every order has a deterministic maximum-loss cap, idempotent client order ID, exit condition, and audit record.
 - Recorded demo and live paper mode must tell the same story and be visibly distinguished.
 
-## 2026-08-30 implementation checkpoint
+## Historical implementation checkpoint — 2026-08-30
 
 The local feature-branch implementation now includes the fail-closed paper cycle,
 restart-safe decision/idempotency/lifecycle state, deterministic P&L recording and
@@ -58,8 +70,8 @@ user-owned or depends on an external service.
   and submission-field draft updated without secrets or unsupported claims.
 - [x] Local verification passed: backend tests/lint/mypy/coverage, frontend tests/lint/
   typecheck/build/format, working-tree secret scan, and full Chromium E2E/rehearsal.
-- [x] Feature-branch checkpoints recorded at `1155689` and `68912d3`; current branch
-  must remain separate from `main`.
+- [x] Feature-branch checkpoints recorded at `1155689` and `68912d3`; the reviewed release
+  baseline is now published on `main` and follow-up changes remain isolated until approved.
 
 ### Manual release gates
 
@@ -80,16 +92,16 @@ user-owned or depends on an external service.
   terminal state, Decision Card hash, and realized/unrealized paper P&L.
 - [ ] Verify deterministic exit behavior (profit target, protective loss, edge decay,
   expiry, and kill switch) and preserve the resulting private evidence.
-- [ ] Deploy backend and frontend on an accepted public host with server-side secrets,
+- [x] Deploy backend and frontend on an accepted public host with server-side secrets,
   persistent state, recorded fallback, exact CORS, and no live-trading configuration.
-- [ ] Set the frontend API base URL to the deployed read-only backend and run the hosted
+- [x] Set the frontend API base URL to the deployed read-only backend and run the hosted
   checker from the repository root; all checks must pass:
   `backend\\.venv\\Scripts\\python.exe scripts\\verify_hosted.py --frontend-url <public_frontend> --backend-url <public_backend>`.
 - [ ] Test the deployed app logged out on desktop and mobile: recorded trade, veto/
   abstain, market closed, provider failure, Alpaca rejection, keyboard/accessibility,
   console/network errors, cold start, restart, health, headers, CORS, and redacted logs.
-- [ ] Push the exact reviewed feature-branch SHA to the public repository and verify the
-  README, setup, demo URL, license, disclosure, and no-secret scan from a clean checkout.
+- [x] Push the exact reviewed release SHA to the public `main` branch and verify the README,
+  setup, demo URL, license, disclosure, and no-secret scan from a clean checkout.
 - [ ] Record the 2–3 minute video from `docs/VIDEO_RUN_OF_SHOW.md`; add captions, use
   only verified live/hosted evidence, redact secrets/IDs/private URLs/local paths, keep
   it under five minutes and 300 MB, and verify logged-out playback.
@@ -338,9 +350,10 @@ user-owned or depends on an external service.
   - Review secrets, CORS, unsafe HTML, tool authority, injection, logs, exports, dependency issues, account identifiers, paper/live wording, and options-risk disclosure.
   - Acceptance: no unresolved high finding and no unsupported return claim.
 
-- [ ] **FD-052 — Deploy backend and frontend** `75 min`
+- [x] **FD-052 — Deploy backend and frontend** `75 min`
   - Use an accepted platform, server-side secrets, persistent storage, redacted logs, health endpoint, and recorded fallback.
-  - Verify: incognito desktop/mobile hosted golden path and restart test.
+  - Evidence: the current main baseline is deployed on Render; the GET-only hosted checker passes the frontend, backend health, recorded cases, fail-closed runtime, and exact CORS contract.
+  - Verify: complete the logged-out desktop/mobile hosted golden path and restart test after the next main deployment.
 
 - [x] **FD-053 — Create the one-page technical write-up** `45 min`
   - Cover AI logic, probability aggregation, option-implied hurdle, risk gates, Alpaca Trading API/MCP/CLI path, execution, exit, P&L, and limitations.

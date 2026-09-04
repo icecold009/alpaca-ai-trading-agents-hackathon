@@ -1,7 +1,8 @@
 # Security and financial-claim review
 
-Reviewed on 2026-08-30 against the current feature branch. The standard Codex Security scan
-reported zero findings across the repository scope. The tracked-file secret scan also passed.
+Baseline review recorded on 2026-08-30 against the pre-polish release. The standard Codex
+Security scan reported zero findings across the repository scope. The tracked-file secret scan
+also passed; the complete cleanup-branch verifier passed again on 2026-09-04.
 
 Validated controls:
 
@@ -16,11 +17,11 @@ Validated controls:
 - Paper trading and options-risk disclaimers are visible in the recorded UI and documentation;
   no return or live-performance claim is made.
 
-Remaining deployment gate: review hosted CORS/origin policy, response headers, server-side secret
-storage, log retention, and account-identifier handling after deployment exists. No live or paper
-order was submitted during this review.
+Remaining operational review: confirm hosted CORS/origin policy, response headers, server-side
+secret storage, log retention, and account-identifier handling after each deployment. No live or
+paper order is submitted by the public recorded surface.
 
 The repository now includes `scripts/verify_hosted.py`, a GET-only check for those release
 boundaries that validates `/healthz`, recorded-case reachability, fail-closed flags, and the
-exact frontend-origin CORS header without printing response payloads. It passed against a local
-recorded backend/frontend emulation; the real hosted deployment still requires a manual run.
+exact frontend-origin CORS header without printing response payloads. It has passed against the
+public Render frontend and backend; private account and paper-order evidence remains separate.

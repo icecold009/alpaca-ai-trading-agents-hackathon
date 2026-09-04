@@ -10,7 +10,7 @@ Target length: 2 minutes 30 seconds. This is a recording script, not evidence of
 | 1:05–1:35 | Risk guardrail slide; click one abstain/failure case | “Freshness, liquidity, expiry, account, drawdown, duplicate, approval, and kill-switch gates all fail closed. The MVP is one contract and caps risk at 0.5% of equity. Stale data or disagreement produces abstain.” |
 | 1:35–2:00 | Alpaca infrastructure slide | “In paper mode, Alpaca reads supply the account, clock, underlying bars and quotes, and option chain. An approved vertical maps to an `mleg` day limit request with explicit legs and an idempotent client order ID. The lifecycle and P&L snapshot remain auditable.” |
 | 2:00–2:18 | Recorded evaluation / rehearsal evidence | “Before the market is open, twelve credential-free cases replay the same boundaries: trade, abstain, veto, error, injection, outage, duplicate, and drawdown. Five golden rehearsals are timestamped.” |
-| 2:18–2:30 | Boundary slide | “This is paper research, not investment advice. The official MCP or CLI proof, market-open paper order, hosted verification, and final submission remain explicit gates. No live-money path exists.” |
+| 2:18–2:30 | Boundary slide | “This is paper research, not investment advice. The public recorded deployment and hosted contract are verified; official MCP or CLI proof, market-open paper order, and final submission remain explicit gates. No live-money path exists.” |
 
 ## Recording checklist
 

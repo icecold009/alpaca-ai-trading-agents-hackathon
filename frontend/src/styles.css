@@ -2,6 +2,7 @@
 
 :root {
   color-scheme: dark;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   font-family:
     Inter,
     ui-sans-serif,
@@ -20,6 +21,15 @@ body {
   min-height: 100vh;
 }
 
+button {
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 140ms var(--ease-out);
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
 summary:focus-visible {
   border-radius: 0.5rem;
   outline: 3px solid rgb(103 232 249);
@@ -34,5 +44,9 @@ summary:focus-visible {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
+  }
+
+  button:active {
+    transform: none;
   }
 }

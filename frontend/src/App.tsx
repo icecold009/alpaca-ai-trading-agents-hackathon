@@ -225,6 +225,7 @@ function App() {
               </h2>
             </div>
             <span
+              aria-live="polite"
               className={`w-fit rounded-xl px-4 py-2 text-sm font-bold uppercase tracking-wide ${
                 isApproved ? "bg-emerald-300 text-emerald-950" : "bg-rose-300 text-rose-950"
               }`}
@@ -419,19 +420,17 @@ function Metric({
 function RecordValue({
   label,
   value,
-  mono = false,
   positive = false,
 }: {
   label: string;
   value: string;
-  mono?: boolean;
   positive?: boolean;
 }) {
   return (
     <div className="min-w-0">
       <dt className="text-slate-400">{label}</dt>
       <dd
-        className={`mt-1 break-words font-medium capitalize ${mono ? "font-mono text-xs" : ""} ${
+        className={`mt-1 break-words font-medium capitalize ${
           positive ? "text-emerald-300" : "text-slate-100"
         }`}
       >
