@@ -5,7 +5,19 @@ from pathlib import Path
 from riskcourt.domain import ContractModel, Identifier, Ticker, VerdictDecision
 from riskcourt.recorded_case import RecordedCase
 
-DEFAULT_CASES_DIR = Path(__file__).resolve().parents[3] / "fixtures" / "cases"
+def _default_cases_dir() -> Path:
+    """Find checked-in fixtures from both a source checkout and an installed app."""
+
+    relative_path = Path("fixtures") / "cases"
+    search_roots = (Path.cwd(), *Path.cwd().parents, *Path(__file__).resolve().parents)
+    for root in search_roots:
+        candidate = root / relative_path
+        if candidate.is_dir():
+            return candidate
+    return Path.cwd() / relative_path
+
+
+DEFAULT_CASES_DIR = _default_cases_dir()
 
 
 class RecordedCaseSummary(ContractModel):

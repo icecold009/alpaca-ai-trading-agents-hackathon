@@ -12,9 +12,20 @@ from pydantic import Field, model_validator
 
 from riskcourt.domain import ContractModel, EvidenceIds, Identifier
 
-DEFAULT_EVALUATION_PATH = (
-    Path(__file__).resolve().parents[3] / "fixtures" / "evaluation" / "fd045.json"
-)
+
+def _default_evaluation_path() -> Path:
+    """Find the checked-in evaluation set from both source and installed layouts."""
+
+    relative_path = Path("fixtures") / "evaluation" / "fd045.json"
+    search_roots = (Path.cwd(), *Path.cwd().parents, *Path(__file__).resolve().parents)
+    for root in search_roots:
+        candidate = root / relative_path
+        if candidate.is_file():
+            return candidate
+    return Path.cwd() / relative_path
+
+
+DEFAULT_EVALUATION_PATH = _default_evaluation_path()
 EXPECTED_CASE_COUNT = 12
 
 
