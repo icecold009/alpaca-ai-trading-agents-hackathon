@@ -10,7 +10,7 @@ This is the authoritative build checklist after reviewing the live LabLab requir
 
 ## Current release snapshot — September 4, 2026
 
-The release baseline is now published on `main` at `afc69321984183df859d3437ab6f38ba2e2bb6a9`.
+The release baseline is now published on `main` at `df6f93a6d2840b088dd74156e20fae7f26744fec`.
 The Render frontend and backend both track `main`, run the recorded-only path, and pass the
 GET-only hosted checker, including exact CORS and fail-closed runtime flags. The public demo is
 available at `https://riskcourt-frontend.onrender.com`.
