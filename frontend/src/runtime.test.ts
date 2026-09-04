@@ -8,6 +8,12 @@ describe("optional hosted runtime", () => {
     expect(await loadRecordedCases(vi.fn(), null)).toBeNull();
   });
 
+  it("normalizes only absolute HTTP API origins", () => {
+    expect(runtimeApiBaseUrl(" https://api.example/// ")).toBe("https://api.example");
+    expect(runtimeApiBaseUrl("api.example")).toBeNull();
+    expect(runtimeApiBaseUrl("ftp://api.example")).toBeNull();
+  });
+
   it("loads validated case payloads from the API when available", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
@@ -85,5 +91,19 @@ describe("optional hosted runtime", () => {
       .mockResolvedValueOnce(new Response(JSON.stringify({ case_id: "missing-fields" })));
 
     expect(await loadRecordedCases(fetcher, "https://api.example")).toBeNull();
+  });
+
+  it("rejects duplicate case summaries before requesting case details", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ case_id: "case_edge_positive" }, { case_id: "case_edge_positive" }]),
+          { status: 200 },
+        ),
+      );
+
+    expect(await loadRecordedCases(fetcher, "https://api.example")).toBeNull();
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

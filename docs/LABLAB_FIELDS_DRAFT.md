@@ -1,15 +1,17 @@
-# LabLab submission fields — draft
+# LabLab submission fields — main release draft
 
-This is a copy-ready draft for the LabLab form. Values marked `PENDING` are intentionally left unresolved until the hosted demo, video, public repository, fresh-account proof, and final submission are approved. Never put API keys or secrets in this file.
+This is a copy-ready draft for the LabLab form. It reflects the public `main`
+release and keeps only account, media, and social values unresolved. Never put
+API keys, secrets, order IDs, or account IDs in this file.
 
 ## Basic information
 
 | Field | Draft value | Check |
 |---|---|---|
-| Project title | **RiskCourt: Options Alpha Jury** | 29 characters; within the 50-character guidance |
-| Short description | RiskCourt is a paper-only options agent where independent AI jurors form calibrated odds and a deterministic risk court trades a defined-risk spread only when jury probability clears the option-implied hurdle. | Under 255 characters |
+| Project title | **RiskCourt** | Within the 50-character guidance |
+| Short description | RiskCourt is a paper-only options agent where three calibrated AI jurors debate evidence, then deterministic risk gates trade a defined-risk spread only when jury odds clear the option-implied hurdle. | Under 255 characters |
 | Track/category | Options Alpha Agents | Confirm against the live form |
-| Technology tags | Python, FastAPI, Pydantic, React, TypeScript, Vite, Alpaca Trading API, options, structured AI outputs, Playwright | Trim to the form's available tags |
+| Technology tags | Alpaca, Python, FastAPI, React, TypeScript, Vite, Options, OpenAI | Select only labels offered by the form |
 
 ## Long description
 
@@ -19,9 +21,9 @@ RiskCourt is an autonomous, paper-only options agent built as an AI prediction m
 
 | Field | Value |
 |---|---|
-| Public GitHub repository | **PENDING — publish the approved feature-branch state first** |
-| Demo platform | **PENDING — select an accepted host after FD-052** |
-| Public application URL | **PENDING — do not invent a URL** |
+| Public GitHub repository | https://github.com/icecold009/alpaca-ai-trading-agents-hackathon/tree/main | Confirm it opens while logged out |
+| Demo platform | Render Static Site | Use `Other` if Render is not listed |
+| Public application URL | https://riskcourt-frontend.onrender.com | Confirm it opens while logged out |
 | Alpaca paper account ID | **PENDING — enter only in the intended LabLab field; never commit here** |
 
 ## Media
@@ -31,7 +33,7 @@ RiskCourt is an autonomous, paper-only options agent built as an AI prediction m
 | Cover image | [`assets/RiskCourt-cover.png`](assets/RiskCourt-cover.png) |
 | Slide presentation | [`assets/RiskCourt-submission-slides.pdf`](assets/RiskCourt-submission-slides.pdf) |
 | Editable deck | [`assets/RiskCourt-submission-slides.pptx`](assets/RiskCourt-submission-slides.pptx) |
-| Video presentation | **PENDING — record the 2–3 minute script after hosted/live proof is available** |
+| Video presentation | **PENDING — record the 2–3 minute script from `VIDEO_RUN_OF_SHOW.md`** |
 
 ## Social engagement
 

@@ -12,9 +12,7 @@ def healthz(request: Request) -> dict[str, object]:
     """Expose only non-sensitive readiness facts."""
 
     settings: Settings = request.app.state.settings
-    paper_configured = (
-        settings.alpaca_api_key_id is not None and settings.alpaca_api_secret_key is not None
-    )
+    paper_configured = settings.paper_credentials_configured
     ready = settings.riskcourt_mode is RuntimeMode.RECORDED or paper_configured
     return {
         "status": "ok" if ready else "degraded",

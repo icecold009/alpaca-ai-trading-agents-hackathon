@@ -17,7 +17,7 @@ from riskcourt.settings import RuntimeMode, Settings
 
 
 class OptionChainUnavailable(RuntimeError):
-    pass
+    """Raised when Alpaca returns no usable option-chain data."""
 
 
 class ChainContract(ContractModel):

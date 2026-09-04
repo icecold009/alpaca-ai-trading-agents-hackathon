@@ -52,9 +52,7 @@ class Settings(BaseSettings):
         if self.riskcourt_live_trading or self.alpaca_live_trading:
             raise ValueError("live trading is permanently disabled in RiskCourt")
 
-        has_key = self._secret_has_value(self.alpaca_api_key_id)
-        has_secret = self._secret_has_value(self.alpaca_api_secret_key)
-        if self.riskcourt_mode is RuntimeMode.PAPER and not (has_key and has_secret):
+        if self.riskcourt_mode is RuntimeMode.PAPER and not self.paper_credentials_configured:
             raise ValueError("paper mode requires ALPACA_API_KEY_ID and ALPACA_API_SECRET_KEY")
 
         return self
@@ -62,6 +60,14 @@ class Settings(BaseSettings):
     @staticmethod
     def _secret_has_value(value: SecretStr | None) -> bool:
         return value is not None and bool(value.get_secret_value().strip())
+
+    @property
+    def paper_credentials_configured(self) -> bool:
+        """Report whether both paper credentials contain non-empty values."""
+
+        return self._secret_has_value(self.alpaca_api_key_id) and self._secret_has_value(
+            self.alpaca_api_secret_key
+        )
 
     @property
     def allowed_origins(self) -> tuple[str, ...]:

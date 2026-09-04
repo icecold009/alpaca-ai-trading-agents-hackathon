@@ -26,6 +26,19 @@ def test_recorded_mode_starts_without_credentials() -> None:
     assert not hasattr(recorded_app.state, "alpaca_trading_client")
 
 
+def test_health_reports_blank_credentials_as_unconfigured() -> None:
+    settings = Settings(
+        riskcourt_mode=RuntimeMode.RECORDED,
+        alpaca_api_key_id=SecretStr("  "),
+        alpaca_api_secret_key=SecretStr(""),
+    )
+
+    with TestClient(create_app(settings)) as client:
+        response = client.get("/healthz")
+
+    assert response.json()["paper_credentials_configured"] is False
+
+
 def test_paper_mode_rejects_missing_credentials() -> None:
     with pytest.raises(ValidationError, match="paper mode requires"):
         Settings(

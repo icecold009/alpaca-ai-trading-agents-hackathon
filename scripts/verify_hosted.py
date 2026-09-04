@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from dataclasses import asdict, dataclass
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
@@ -26,7 +27,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--frontend-url", required=True, help="public frontend origin")
     parser.add_argument("--backend-url", required=True, help="public backend origin")
-    parser.add_argument("--timeout", type=float, default=15.0)
+    parser.add_argument("--timeout", type=_positive_timeout, default=15.0)
     args = parser.parse_args(argv)
 
     frontend = args.frontend_url.rstrip("/")
@@ -132,6 +133,16 @@ def _origin(url: str) -> str:
     if not parsed.scheme or not parsed.netloc:
         return ""
     return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _positive_timeout(value: str) -> float:
+    try:
+        timeout = float(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("timeout must be a number") from error
+    if not math.isfinite(timeout) or timeout <= 0:
+        raise argparse.ArgumentTypeError("timeout must be a positive finite number")
+    return timeout
 
 
 if __name__ == "__main__":

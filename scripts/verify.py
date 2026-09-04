@@ -80,7 +80,7 @@ def main() -> int:
     parser.add_argument(
         "--skip-e2e",
         action="store_true",
-        help="skip the browser run when Chromium is unavailable; CI runs it by default",
+        help="skip browser E2E for a fast local check; CI runs it by default",
     )
     args = parser.parse_args()
 
