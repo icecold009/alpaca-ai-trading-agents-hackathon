@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from riskcourt import __version__
 from riskcourt.case_repository import RecordedCaseRepository
 from riskcourt.health import router as health_router
+from riskcourt.personal_api import router as personal_router
+from riskcourt.personal_store import PersonalStore
 from riskcourt.routes import router as recorded_cases_router
 from riskcourt.settings import Settings
 
@@ -26,6 +28,9 @@ def create_app(
     application.state.recorded_case_repository = (
         recorded_case_repository or RecordedCaseRepository()
     )
+    application.state.personal_store = PersonalStore(
+        resolved_settings.riskcourt_state_dir / "riskcourt.sqlite3"
+    )
     if resolved_settings.allowed_origins:
         application.add_middleware(
             CORSMiddleware,
@@ -36,6 +41,7 @@ def create_app(
         )
     application.include_router(health_router)
     application.include_router(recorded_cases_router)
+    application.include_router(personal_router)
     return application
 
 

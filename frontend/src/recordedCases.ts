@@ -4,6 +4,7 @@ import insufficientEdge from "../../fixtures/cases/insufficient-edge.json";
 export interface RecordedCaseView {
   case_id: string;
   name: string;
+  source?: string;
   underlying_symbol: string;
   as_of: string;
   forecasts: Array<{

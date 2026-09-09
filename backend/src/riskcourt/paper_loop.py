@@ -119,6 +119,7 @@ def run_paper_cycle(
     dependencies: PaperCycleDependencies,
     *,
     case_id: str,
+    submit: bool = True,
     now: datetime | None = None,
     symbol: str = "SPY",
     expiration_from: date | None = None,
@@ -398,6 +399,21 @@ def run_paper_cycle(
         evidence_ids,
         {"approval_id": approval.approval_id, "client_order_id": client_order_id},
     )
+
+    if not submit:
+        return _result(
+            case_id,
+            "approval_ready",
+            "paper_order_preview_ready",
+            account,
+            market,
+            chain,
+            candidate,
+            jury,
+            intent,
+            verdict,
+            approval=approval,
+        )
 
     request = dependencies.orders.build_vertical_order(candidate, client_order_id=client_order_id)
     submission = dependencies.orders.submit(request, approved=True)
