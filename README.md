@@ -47,7 +47,9 @@ backend\.venv\Scripts\python.exe scripts\verify.py --skip-e2e
 
 For paper mode, copy [`.env.example`](.env.example) to an ignored `.env`, set paper credentials only, and keep `RISKCOURT_MODE=paper`. The application rejects live-trading flags and non-official Alpaca endpoints. Never commit keys or an account ID.
 
-The backend exposes a sanitized `GET /healthz` readiness probe and the recorded-case API. A hosted frontend may set `VITE_RISKCOURT_API_URL` using [`frontend/.env.example`](frontend/.env.example); failed, missing, or malformed API responses automatically fall back to the bundled recorded fixtures. No public route submits or cancels orders.
+The backend exposes a sanitized `GET /healthz` readiness probe, the recorded-case API, and a local personal-workstation API. A hosted frontend may set `VITE_RISKCOURT_API_URL` using [`frontend/.env.example`](frontend/.env.example); failed, missing, or malformed API responses automatically fall back to the bundled recorded fixtures. Keep personal mutation routes bound to localhost; the public recorded deployment remains credential-free and does not submit or cancel orders.
+
+The post-submission personal workflow, SQLite state, explicit approval boundary, and opt-in scan scheduler are documented in [`docs/PERSONAL_WORKSTATION.md`](docs/PERSONAL_WORKSTATION.md).
 
 For credentialed operator verification, the paper-cycle command is explicitly
 dry-run by default and persists its audit chain only when `--submit` is passed:

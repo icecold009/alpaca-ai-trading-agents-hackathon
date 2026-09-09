@@ -25,6 +25,10 @@ The editable install includes FastAPI, Pydantic settings, SQLAlchemy/Alembic wit
 - `ALPACA_PAPER_BASE_URL` must remain `https://paper-api.alpaca.markets`.
 - Setting `RISKCOURT_LIVE_TRADING` or `ALPACA_LIVE_TRADING` to `true` aborts startup. RiskCourt has no live-money mode.
 
+The local personal-workstation API uses SQLite under `RISKCOURT_STATE_DIR` and
+is documented in [`../docs/PERSONAL_WORKSTATION.md`](../docs/PERSONAL_WORKSTATION.md).
+Keep it bound to `127.0.0.1`; its mutation routes are not a hosted public API.
+
 ## Paper-cycle operator boundary
 
 `scripts/run_paper_cycle.py` is the only bundled command that can reach the

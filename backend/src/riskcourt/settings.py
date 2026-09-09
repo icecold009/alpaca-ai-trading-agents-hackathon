@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     alpaca_live_trading: bool = False
     riskcourt_state_dir: Path = PROJECT_ROOT / ".riskcourt"
     riskcourt_allowed_origins: str = ""
+    riskcourt_provider_spec: str | None = None
 
     @model_validator(mode="after")
     def reject_unsafe_configuration(self) -> Self:
