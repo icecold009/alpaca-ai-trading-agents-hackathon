@@ -69,6 +69,7 @@ from riskcourt.pnl import create_pnl_snapshot
 from riskcourt.risk_limits import RiskStateStore
 from riskcourt.sizing import SizingDecision, size_defined_risk_position
 from riskcourt.spread_selector import SpreadCandidate, select_vertical_spreads
+from riskcourt.typesafe_state import build_typesafe_state
 
 
 class PaperCycleUnavailable(RuntimeError):
@@ -205,6 +206,8 @@ def run_paper_cycle(
             outcome=outcome,
             observed_at=observed_at,
             evidence_ids=evidence_ids,
+            evidence=evidence,
+            market=market,
             minimum_edge=minimum_edge,
         )
     except ProviderUnavailable:
@@ -224,6 +227,10 @@ def run_paper_cycle(
                 None if jury.aggregate.probability is None else str(jury.aggregate.probability)
             ),
             "decision": jury.decision.value,
+            "forecasts": [forecast.provider_metadata for forecast in jury.forecasts],
+            "abstention_reason": (
+                jury.reason if jury.decision is EdgeDecision.ABSTAIN else None
+            ),
         },
     )
 
@@ -528,20 +535,42 @@ def _run_jury(
     outcome: ForecastOutcome,
     observed_at: datetime,
     evidence_ids: tuple[str, ...],
+    evidence: tuple[EvidenceItem, ...],
+    market: UnderlyingMarketState,
     minimum_edge: Decimal,
 ) -> JuryDecision:
     from riskcourt.orchestrator import run_jury
 
     horizon = datetime.combine(candidate.long_contract.expiry, datetime.min.time(), tzinfo=UTC)
+    horizon = max(horizon, observed_at + timedelta(hours=1))
+    state = build_typesafe_state(
+        symbol=market.quote.symbol,
+        outcome=outcome,
+        horizon_at=horizon,
+        as_of=observed_at,
+        evidence=evidence,
+        market=cast(dict[str, JsonValue], market.quote.model_dump(mode="json")),
+        options={
+            "long": cast(dict[str, JsonValue], candidate.long_contract.model_dump(mode="json")),
+            "short": cast(dict[str, JsonValue], candidate.short_contract.model_dump(mode="json")),
+            "geometry": {
+                "net_debit": str(candidate.geometry.net_debit),
+                "spread_width": str(candidate.geometry.spread_width),
+                "break_even_underlying": str(candidate.geometry.break_even_underlying),
+                "option_implied_hurdle": str(candidate.geometry.option_implied_hurdle),
+            },
+        },
+    )
     return run_jury(
         provider,
         candidate.geometry,
         case_id=case_id,
         outcome=outcome,
         produced_at=observed_at,
-        horizon_at=max(horizon, observed_at + timedelta(hours=1)),
+        horizon_at=horizon,
         evidence_ids=evidence_ids,
         minimum_edge=minimum_edge,
+        state=state,
     )
 
 

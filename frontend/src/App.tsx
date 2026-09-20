@@ -884,7 +884,17 @@ function DecisionDetail({
           <article className="juror-card" key={forecast.forecast_id}>
             <div className="juror-title">
               <span>{jurorNames[forecast.juror_id] ?? forecast.juror_id}</span>
-              <small>{forecast.evidence_ids.length} refs</small>
+              <small>
+                {forecast.evidence_ids.length} refs ·{" "}
+                {forecast.provider_metadata?.provider === "typesafe"
+                  ? "TypeSafe" +
+                    (forecast.provider_metadata.model
+                      ? " · " + forecast.provider_metadata.model
+                      : "")
+                  : forecast.provider_metadata?.shadow_typesafe
+                    ? "Shadow · " + (forecast.provider_metadata.shadow_typesafe.status ?? "unknown")
+                    : "Deterministic"}
+              </small>
             </div>
             <strong>{percent(forecast.probability)}</strong>
             <div className="juror-meta">

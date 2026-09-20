@@ -25,3 +25,11 @@ The repository now includes `scripts/verify_hosted.py`, a GET-only check for tho
 boundaries that validates `/healthz`, recorded-case reachability, fail-closed flags, and the
 exact frontend-origin CORS header without printing response payloads. It has passed against the
 public Render frontend and backend; private account and paper-order evidence remains separate.
+
+TypeSafe integration review for the feature branch: the official SDK is lazy-loaded so recorded
+mode remains credential-free; provider state excludes API keys, account/order identifiers, raw
+references, and unbounded text; evidence is partitioned by juror role; and the adapter accepts
+only bounded typed answers whose evidence anchor is one of the supplied IDs. TypeSafe output is
+limited to forecast inputs and sanitized provenance. Deterministic calibration, hurdle, sizing,
+approval, idempotency, kill switch, order construction, and execution remain outside provider
+authority. No live TypeSafe API smoke test or paper order was run in this local verification.

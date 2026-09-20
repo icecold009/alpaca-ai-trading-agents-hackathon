@@ -15,6 +15,15 @@ export interface RecordedCaseView {
     confidence_stake: string;
     evidence_ids: string[];
     rationale: string;
+    provider_metadata?: {
+      provider?: string;
+      model?: string;
+      typesafe_confidence?: string;
+      shadow_typesafe?: {
+        status?: string;
+        reason?: string;
+      };
+    };
   }>;
   strategy: {
     jury_probability: string;

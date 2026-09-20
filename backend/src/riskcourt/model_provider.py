@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
 from threading import Thread
 from typing import Protocol, TypeVar
@@ -28,6 +28,7 @@ class ProviderRequest(ContractModel):
 class ProviderReply:
     output: dict[str, JsonValue]
     cost_units: Decimal = Decimal("0")
+    metadata: dict[str, JsonValue] = field(default_factory=dict)
 
 
 class ProviderClient(Protocol):
@@ -41,6 +42,7 @@ class ProviderTrace:
     model_version: str
     attempts: int
     cost_units: Decimal
+    metadata: dict[str, JsonValue] = field(default_factory=dict)
 
 
 T = TypeVar("T", bound=ContractModel)
@@ -73,11 +75,13 @@ class ProviderBoundary:
     def call(self, request: ProviderRequest, response_model: type[T]) -> ProviderResult[T]:
         attempts = 0
         total_cost = Decimal("0")
+        metadata: dict[str, JsonValue] = {}
         current = request
         while attempts < 2:
             attempts += 1
             reply = self._invoke(current)
             total_cost += reply.cost_units
+            metadata = dict(reply.metadata)
             try:
                 data = response_model.model_validate(reply.output)
             except ValidationError as error:
@@ -95,6 +99,7 @@ class ProviderBoundary:
                     model_version=request.model_version,
                     attempts=attempts,
                     cost_units=total_cost,
+                    metadata=metadata,
                 ),
             )
         raise AssertionError("provider call loop must return or raise")

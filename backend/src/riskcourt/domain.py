@@ -187,6 +187,7 @@ class ProbabilityForecast(ContractModel):
     invalidation: Annotated[str, Field(min_length=1, max_length=1000)]
     model_version: Annotated[str, Field(min_length=1, max_length=120)]
     prompt_version: Annotated[str, Field(min_length=1, max_length=120)]
+    provider_metadata: dict[str, JsonValue] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def require_future_horizon(self) -> Self:

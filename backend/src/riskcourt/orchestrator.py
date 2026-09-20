@@ -12,6 +12,7 @@ from riskcourt.jurors import JUROR_SPECS, JurorSpec, run_juror
 from riskcourt.model_provider import ProviderBoundary, ProviderUnavailable
 from riskcourt.option_hurdle import VerticalSpreadGeometry
 from riskcourt.probability_engine import AggregationStatus, JuryAggregate, aggregate_forecasts
+from riskcourt.typesafe_state import TypeSafeState
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +35,7 @@ def run_jury(
     evidence_ids: tuple[str, ...],
     specs: tuple[JurorSpec, ...] = JUROR_SPECS,
     minimum_edge: Decimal = Decimal("0.08"),
+    state: TypeSafeState | None = None,
 ) -> JuryDecision:
     forecasts: list[ProbabilityForecast] = []
     try:
@@ -47,6 +49,7 @@ def run_jury(
                     produced_at=produced_at,
                     horizon_at=horizon_at,
                     available_evidence_ids=evidence_ids,
+                    state=state,
                 )
             )
     except (ProviderUnavailable, ValueError) as error:

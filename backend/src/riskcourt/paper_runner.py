@@ -13,9 +13,24 @@ from types import ModuleType
 from typing import Any, cast
 
 from riskcourt.alpaca_account import PaperAccountState
-from riskcourt.model_provider import ProviderClient
+from riskcourt.jurors import DeterministicJurorStub, JurorOutput
+from riskcourt.model_provider import (
+    ProviderBoundary,
+    ProviderClient,
+    ProviderReply,
+    ProviderRequest,
+    ProviderUnavailable,
+)
 from riskcourt.paper_loop import PaperCycleResult
 from riskcourt.risk_limits import PortfolioRiskSnapshot, RiskStateStore
+from riskcourt.settings import AiMode, Settings
+from riskcourt.typesafe_provider import (
+    BoundedProviderClient,
+    ShadowProviderClient,
+    TypeSafeProviderClient,
+    TypeSafeProviderConfig,
+    create_typesafe_sdk_client,
+)
 
 
 def load_provider_client(spec: str | None) -> ProviderClient:
@@ -40,6 +55,49 @@ def load_provider_client(spec: str | None) -> ProviderClient:
     if not callable(getattr(candidate, "complete", None)):
         raise TypeError("provider must expose a callable complete(request) method")
     return cast(ProviderClient, candidate)
+
+
+def load_configured_provider(settings: Settings, spec: str | None = None) -> ProviderClient:
+    """Build the explicitly selected provider without changing policy ownership."""
+
+    primary = load_provider_client(spec) if spec else DeterministicJurorStub()
+    if settings.riskcourt_ai_mode is AiMode.DETERMINISTIC:
+        return primary
+    if not settings.typesafe_credentials_configured:
+        if settings.riskcourt_ai_mode is AiMode.SHADOW:
+            return ShadowProviderClient(primary, _UnavailableTypeSafeProvider())
+        raise ProviderUnavailable("typesafe api key is missing")
+    api_key = settings.typesafe_api_key
+    if api_key is None:  # pragma: no cover - guarded by typesafe_credentials_configured
+        raise ProviderUnavailable("typesafe api key is missing")
+    sdk_client = create_typesafe_sdk_client(
+        api_key=api_key.get_secret_value(),
+        model=settings.typesafe_model,
+        timeout_seconds=settings.typesafe_timeout_seconds,
+    )
+    typesafe = TypeSafeProviderClient(
+        sdk_client,
+        config=TypeSafeProviderConfig(model=settings.typesafe_model),
+    )
+    if settings.riskcourt_ai_mode is AiMode.SHADOW:
+        shadow_boundary = ProviderBoundary(
+            typesafe,
+            timeout_seconds=settings.typesafe_timeout_seconds,
+            max_calls=settings.typesafe_max_calls,
+            max_cost_units=settings.typesafe_max_cost_units,
+        )
+        return ShadowProviderClient(
+            primary,
+            BoundedProviderClient(typesafe, shadow_boundary, JurorOutput),
+        )
+    return typesafe
+
+
+class _UnavailableTypeSafeProvider:
+    """Shadow-mode placeholder used when recorded runs have no provider key."""
+
+    def complete(self, _: ProviderRequest) -> ProviderReply:
+        raise ProviderUnavailable("typesafe api key is missing")
 
 
 def build_risk_state(account: PaperAccountState, *, daily_pnl: Decimal) -> RiskStateStore:

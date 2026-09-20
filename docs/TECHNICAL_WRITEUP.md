@@ -6,6 +6,15 @@ RiskCourt is an autonomous, paper-only options agent built around an AI predicti
 
 The provider boundary enforces a schema, timeout, one repair attempt, call cap, cost cap, and model/prompt version trace. A provider failure, malformed response, missing evidence, or prompt-injection attempt ends in abstention or an explicit error. The deterministic orchestrator aggregates only valid forecasts. For juror `i`, calibration shrinks a probability toward 50%: `p_i' = 0.5 + c_i(p_i − 0.5)`. The aggregate weights each calibrated probability by `w_i = c_i × stake_i`: `P_jury = Σ(w_i p_i') / Σw_i`.
 
+The optional TypeSafe adapter asks three atomic System One questions in one bounded request:
+Noul for the outcome probability, Choice for one supplied evidence anchor (including an explicit
+no-supported-evidence option), and Score for evidence quality. TypeSafe confidence and evidence
+quality contribute only to a bounded confidence stake; calibration remains code-owned. The adapter
+receives role-specific evidence partitions, hashes the sanitized state, records model, question-set,
+usage, latency, and validation metadata, and fails closed on stale evidence, unknown IDs,
+malformed answers, missing credentials, or provider errors. RISKCOURT_AI_MODE=shadow keeps the
+deterministic result while recording a comparison; typesafe is active only when explicitly selected.
+
 ## Option-implied hurdle and entry
 
 RiskCourt selects a same-underlying, same-expiry vertical debit spread from a bounded, timestamped Alpaca option chain. The spread is a defined-risk payoff, not a naked option position. If `D` is debit per share, `W` is strike width, and `S` is a configured slippage buffer, the deterministic break-even proxy is `P_hurdle = (D + S) / W`. This is explicitly a payoff-geometry proxy, not a claim that an option quote reveals a literal physical probability. The agent enters only when `P_jury − P_hurdle ≥ 0.08`, after all data-quality and account gates pass.

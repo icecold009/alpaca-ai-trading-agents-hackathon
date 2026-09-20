@@ -1,5 +1,14 @@
 # RiskCourt — Detailed Execution TODO
 
+## TypeSafe AI integration checkpoint
+
+The codex/alpaca-typesafe-ai implementation adds the official typesafe-sdk boundary behind the
+existing provider contract. Deterministic, shadow, and active TypeSafe modes are explicit;
+recorded mode remains credential-free. The adapter uses atomic Noul/Choice/Score judgments,
+role-specific evidence partitions, bounded state hashes, fail-closed validation, and sanitized
+forecast provenance. Remaining release work is an operator-owned TypeSafe API smoke test with
+server-side credentials and a paper preflight; no live-trading path is planned.
+
 > **Superseded on August 29, 2026.** The live event page made options trading mandatory, added P&L and fresh-account requirements, and exposed originality conflicts with the original equities-only concept. Do not execute this backlog. Use [FIVE_DAY_TODO.md](./FIVE_DAY_TODO.md) and [EVENT_REQUIREMENTS.md](./EVENT_REQUIREMENTS.md).
 
 This historical backlog preserves the original planning record. It is not the current execution contract.

@@ -22,6 +22,10 @@ The editable install includes FastAPI, Pydantic settings, SQLAlchemy/Alembic wit
 
 - `RISKCOURT_MODE=recorded` is the default and starts without credentials or network access.
 - `RISKCOURT_MODE=paper` requires both `ALPACA_API_KEY_ID` and `ALPACA_API_SECRET_KEY`.
+- `RISKCOURT_AI_MODE=deterministic` is the default; `shadow` records a TypeSafe comparison while
+  preserving the deterministic result; `typesafe` requires `TYPESAFE_API_KEY` in paper mode.
+- TypeSafe receives only role-scoped market/options/news evidence summaries and timestamps. It
+  cannot select strikes, set prices or quantities, bypass a veto, issue approval, or submit an order.
 - `ALPACA_PAPER_BASE_URL` must remain `https://paper-api.alpaca.markets`.
 - Setting `RISKCOURT_LIVE_TRADING` or `ALPACA_LIVE_TRADING` to `true` aborts startup. RiskCourt has no live-money mode.
 
@@ -38,17 +42,20 @@ paper order adapter. It performs a read-only preflight by default:
 .\.venv\Scripts\python.exe scripts/run_paper_cycle.py --symbol SPY
 ```
 
-Submission requires an explicit `--submit`, a private provider factory in
-`module:attribute` form, and a known `--daily-pnl` value. The command persists
+Submission requires an explicit `--submit` and a known `--daily-pnl` value. The command persists
 the hash-chained audit log under `RISKCOURT_STATE_DIR/events/`, refuses to reuse
 an existing case ID, and prints only sanitized evidence. It never supports live
 money or exposes an unauthenticated submission route.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/run_paper_cycle.py `
-  --submit --provider your_private_provider:build_client `
+  --submit `
   --daily-pnl 0 --case-id case_runner_20260831_120000
 ```
+
+Use `--provider module:attribute` only when supplying a custom provider in deterministic or shadow
+mode. The bundled TypeSafe adapter is selected through `RISKCOURT_AI_MODE` and the server-side
+`TYPESAFE_API_KEY`, `TYPESAFE_MODEL`, timeout, call, and cost limits.
 
 Run the hosted read-only contract checker from the repository root after a
 backend and frontend deployment:

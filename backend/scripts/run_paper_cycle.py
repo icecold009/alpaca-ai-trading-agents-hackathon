@@ -21,7 +21,11 @@ from riskcourt.event_store import PersistentDecisionLog
 from riskcourt.model_provider import ProviderBoundary
 from riskcourt.order_lifecycle import PersistentOrderLifecycle
 from riskcourt.paper_loop import PaperCycleDependencies, run_paper_cycle
-from riskcourt.paper_runner import build_risk_state, load_provider_client, sanitize_result
+from riskcourt.paper_runner import (
+    build_risk_state,
+    load_configured_provider,
+    sanitize_result,
+)
 from riskcourt.settings import RuntimeMode, Settings
 
 
@@ -35,8 +39,6 @@ def main(argv: list[str] | None = None) -> int:
         daily_pnl = _parse_decimal(args.daily_pnl, "--daily-pnl", required=args.submit)
         case_id = args.case_id or _default_case_id()
         if args.submit:
-            if args.provider is None:
-                raise ValueError("--submit requires --provider module:attribute")
             result, log, lifecycle_persisted = _submit(settings, args, case_id, daily_pnl)
             output: dict[str, Any] = sanitize_result(result)
             output["audit"] = {
@@ -107,7 +109,12 @@ def _submit(
     case_id: str,
     daily_pnl: Decimal,
 ) -> tuple[Any, PersistentDecisionLog, bool]:
-    provider = ProviderBoundary(load_provider_client(args.provider))
+    provider = ProviderBoundary(
+        load_configured_provider(settings, args.provider or settings.riskcourt_provider_spec),
+        timeout_seconds=settings.typesafe_timeout_seconds,
+        max_calls=settings.typesafe_max_calls,
+        max_cost_units=settings.typesafe_max_cost_units,
+    )
     account_adapter = AlpacaAccountAdapter.from_settings(settings)
     account = account_adapter.fetch()
     risk = build_risk_state(account, daily_pnl=daily_pnl)

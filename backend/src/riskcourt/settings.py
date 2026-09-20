@@ -1,10 +1,11 @@
 """Typed, fail-closed runtime configuration for RiskCourt."""
 
+from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
 from typing import Self
 
-from pydantic import AnyHttpUrl, SecretStr, model_validator
+from pydantic import AnyHttpUrl, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -15,6 +16,14 @@ class RuntimeMode(StrEnum):
 
     RECORDED = "recorded"
     PAPER = "paper"
+
+
+class AiMode(StrEnum):
+    """Provider modes with deterministic authority preserved in every mode."""
+
+    DETERMINISTIC = "deterministic"
+    SHADOW = "shadow"
+    TYPESAFE = "typesafe"
 
 
 class Settings(BaseSettings):
@@ -37,6 +46,12 @@ class Settings(BaseSettings):
     riskcourt_state_dir: Path = PROJECT_ROOT / ".riskcourt"
     riskcourt_allowed_origins: str = ""
     riskcourt_provider_spec: str | None = None
+    typesafe_api_key: SecretStr | None = None
+    typesafe_model: str = Field(default="jev-latest", min_length=1, max_length=120)
+    typesafe_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
+    typesafe_max_calls: int = Field(default=3, ge=1, le=20)
+    typesafe_max_cost_units: Decimal = Field(default=Decimal("3"), ge=0, max_digits=18)
+    riskcourt_ai_mode: AiMode = AiMode.DETERMINISTIC
 
     @model_validator(mode="after")
     def reject_unsafe_configuration(self) -> Self:
@@ -56,6 +71,13 @@ class Settings(BaseSettings):
         if self.riskcourt_mode is RuntimeMode.PAPER and not self.paper_credentials_configured:
             raise ValueError("paper mode requires ALPACA_API_KEY_ID and ALPACA_API_SECRET_KEY")
 
+        if (
+            self.riskcourt_mode is RuntimeMode.PAPER
+            and self.riskcourt_ai_mode is AiMode.TYPESAFE
+            and not self.typesafe_credentials_configured
+        ):
+            raise ValueError("paper mode with TypeSafe AI requires TYPESAFE_API_KEY")
+
         return self
 
     @staticmethod
@@ -69,6 +91,12 @@ class Settings(BaseSettings):
         return self._secret_has_value(self.alpaca_api_key_id) and self._secret_has_value(
             self.alpaca_api_secret_key
         )
+
+    @property
+    def typesafe_credentials_configured(self) -> bool:
+        """Report whether the optional TypeSafe credential is non-empty."""
+
+        return self._secret_has_value(self.typesafe_api_key)
 
     @property
     def allowed_origins(self) -> tuple[str, ...]:
