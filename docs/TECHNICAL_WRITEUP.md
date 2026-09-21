@@ -14,6 +14,8 @@ receives role-specific evidence partitions, hashes the sanitized state, records 
 usage, latency, and validation metadata, and fails closed on stale evidence, unknown IDs,
 malformed answers, missing credentials, or provider errors. RISKCOURT_AI_MODE=shadow keeps the
 deterministic result while recording a comparison; typesafe is active only when explicitly selected.
+The final local verification completed a live typed smoke request, a three-juror shadow replay, and
+a read-only Alpaca paper preflight with submission disabled. No live-money execution path was used.
 
 ## Option-implied hurdle and entry
 

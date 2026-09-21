@@ -32,4 +32,6 @@ references, and unbounded text; evidence is partitioned by juror role; and the a
 only bounded typed answers whose evidence anchor is one of the supplied IDs. TypeSafe output is
 limited to forecast inputs and sanitized provenance. Deterministic calibration, hurdle, sizing,
 approval, idempotency, kill switch, order construction, and execution remain outside provider
-authority. No live TypeSafe API smoke test or paper order was run in this local verification.
+authority. Final local verification completed a bounded live TypeSafe smoke request and a
+three-juror shadow replay using synthetic, role-scoped evidence. A read-only Alpaca paper
+preflight also passed with submission disabled; no paper order was submitted.

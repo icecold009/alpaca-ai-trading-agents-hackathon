@@ -6,8 +6,9 @@ The codex/alpaca-typesafe-ai implementation adds the official typesafe-sdk bound
 existing provider contract. Deterministic, shadow, and active TypeSafe modes are explicit;
 recorded mode remains credential-free. The adapter uses atomic Noul/Choice/Score judgments,
 role-specific evidence partitions, bounded state hashes, fail-closed validation, and sanitized
-forecast provenance. Remaining release work is an operator-owned TypeSafe API smoke test with
-server-side credentials and a paper preflight; no live-trading path is planned.
+forecast provenance. Operator verification is complete: the server-side TypeSafe API smoke test,
+three-juror shadow replay, and read-only Alpaca paper preflight all passed with no order submission.
+No live-trading path is planned.
 
 > **Superseded on August 29, 2026.** The live event page made options trading mandatory, added P&L and fresh-account requirements, and exposed originality conflicts with the original equities-only concept. Do not execute this backlog. Use [FIVE_DAY_TODO.md](./FIVE_DAY_TODO.md) and [EVENT_REQUIREMENTS.md](./EVENT_REQUIREMENTS.md).
 
