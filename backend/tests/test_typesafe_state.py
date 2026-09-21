@@ -33,7 +33,14 @@ def state_with_all_evidence() -> TypeSafeState:
             evidence("ev_option", EvidenceType.OPTION_QUOTE),
             evidence("ev_news", EvidenceType.NEWS),
         ),
-        market={"bid": "640.10", "ask": "640.20"},
+        market={
+            "bid": "640.10",
+            "ask": "640.20",
+            "forecast_reference": {
+                "kind": "deterministic_break_even_underlying",
+                "value": "640.15",
+            },
+        },
         options={"spread_width": "1"},
     )
 
@@ -48,9 +55,17 @@ def test_state_hash_is_stable_and_role_partitions_are_explicit() -> None:
     assert state.for_juror("juror_market").market == {
         "bid": "640.10",
         "ask": "640.20",
+        "forecast_reference": {
+            "kind": "deterministic_break_even_underlying",
+            "value": "640.15",
+        },
     }
     assert state.for_juror("juror_market").options == {}
     assert state.for_juror("juror_volatility").options == {"spread_width": "1"}
+    assert state.for_juror("juror_volatility").market == {
+        "bid": "640.10",
+        "ask": "640.20",
+    }
     assert state.for_juror("juror_catalyst").market == {}
     assert state.for_juror("juror_catalyst").options == {}
     assert "raw_reference" not in state.model_dump(mode="json")

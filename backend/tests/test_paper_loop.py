@@ -27,6 +27,7 @@ from riskcourt.jurors import DeterministicJurorStub
 from riskcourt.model_provider import ProviderBoundary, ProviderUnavailable
 from riskcourt.paper_loop import (
     PaperCycleDependencies,
+    _market_context,
     record_filled_pnl,
     run_paper_cycle,
 )
@@ -119,6 +120,15 @@ def market() -> UnderlyingMarketState:
         ),
         bars=(),
     )
+
+
+def test_market_context_includes_code_owned_forecast_reference() -> None:
+    context = _market_context(market(), forecast_reference=Decimal("640.05"))
+
+    assert context["forecast_reference"] == {
+        "kind": "deterministic_break_even_underlying",
+        "value": "640.05",
+    }
 
 
 def chain() -> OptionChainState:

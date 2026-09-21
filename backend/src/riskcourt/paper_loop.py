@@ -555,7 +555,10 @@ def _run_jury(
         horizon_at=horizon,
         as_of=observed_at,
         evidence=evidence,
-        market=_market_context(market),
+        market=_market_context(
+            market,
+            forecast_reference=candidate.geometry.break_even_underlying,
+        ),
         options=_options_context(candidate),
     )
     return run_jury(
@@ -693,7 +696,11 @@ def _build_evidence(
     return tuple(items)
 
 
-def _market_context(market: UnderlyingMarketState) -> dict[str, JsonValue]:
+def _market_context(
+    market: UnderlyingMarketState,
+    *,
+    forecast_reference: Decimal | None = None,
+) -> dict[str, JsonValue]:
     """Build bounded, deterministic market context for semantic judgments."""
 
     quote = market.quote
@@ -714,7 +721,7 @@ def _market_context(market: UnderlyingMarketState) -> dict[str, JsonValue]:
     closes = [bar.close for bar in bars]
     first_close = closes[0] if closes else quote.bid
     latest_close = closes[-1] if closes else quote.bid
-    return {
+    context: dict[str, JsonValue] = {
         **quote_payload,
         "bars": bar_payload,
         "features": {
@@ -728,6 +735,12 @@ def _market_context(market: UnderlyingMarketState) -> dict[str, JsonValue]:
             "latest_close": str(latest_close),
         },
     }
+    if forecast_reference is not None:
+        context["forecast_reference"] = {
+            "kind": "deterministic_break_even_underlying",
+            "value": str(forecast_reference),
+        }
+    return context
 
 
 def _options_context(candidate: SpreadCandidate) -> dict[str, JsonValue]:
