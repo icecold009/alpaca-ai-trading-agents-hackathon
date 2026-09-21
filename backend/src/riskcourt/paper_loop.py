@@ -228,6 +228,10 @@ def run_paper_cycle(
             ),
             "decision": jury.decision.value,
             "forecasts": [forecast.provider_metadata for forecast in jury.forecasts],
+            "juror_abstentions": [
+                {"juror_id": juror_id, "reason": reason}
+                for juror_id, reason in jury.abstentions
+            ],
             "abstention_reason": (
                 jury.reason if jury.decision is EdgeDecision.ABSTAIN else None
             ),
@@ -247,7 +251,9 @@ def run_paper_cycle(
         verdict = _build_verdict(
             case_id,
             intent,
-            VerdictDecision.ABSTAIN if jury.reason == "provider_failure" else VerdictDecision.VETO,
+            VerdictDecision.ABSTAIN
+            if jury.reason in {"provider_failure", "no_supported_evidence", "low_evidence_quality"}
+            else VerdictDecision.VETO,
             0,
             Decimal("0"),
             observed_at,
@@ -549,17 +555,8 @@ def _run_jury(
         horizon_at=horizon,
         as_of=observed_at,
         evidence=evidence,
-        market=cast(dict[str, JsonValue], market.quote.model_dump(mode="json")),
-        options={
-            "long": cast(dict[str, JsonValue], candidate.long_contract.model_dump(mode="json")),
-            "short": cast(dict[str, JsonValue], candidate.short_contract.model_dump(mode="json")),
-            "geometry": {
-                "net_debit": str(candidate.geometry.net_debit),
-                "spread_width": str(candidate.geometry.spread_width),
-                "break_even_underlying": str(candidate.geometry.break_even_underlying),
-                "option_implied_hurdle": str(candidate.geometry.option_implied_hurdle),
-            },
-        },
+        market=_market_context(market),
+        options=_options_context(candidate),
     )
     return run_jury(
         provider,
@@ -635,7 +632,7 @@ def _build_evidence(
             case_id,
             "account",
             EvidenceType.ACCOUNT,
-            "SPY",
+            market.quote.symbol,
             account.account.observed_at,
             account.account.model_dump(mode="json"),
             "Alpaca paper account snapshot",
@@ -652,6 +649,18 @@ def _build_evidence(
             "Alpaca underlying quote",
         )
     )
+    if market.bars:
+        items.append(
+            _evidence(
+                case_id,
+                "bars",
+                EvidenceType.MARKET_BAR,
+                market.quote.symbol,
+                market.bars[-1].started_at,
+                _market_context(market),
+                f"Alpaca {len(market.bars)}-bar underlying history",
+            )
+        )
     for suffix, contract in (
         ("long", candidate.long_contract),
         ("short", candidate.short_contract),
@@ -682,6 +691,73 @@ def _build_evidence(
         )
     )
     return tuple(items)
+
+
+def _market_context(market: UnderlyingMarketState) -> dict[str, JsonValue]:
+    """Build bounded, deterministic market context for semantic judgments."""
+
+    quote = market.quote
+    bars = market.bars[-20:]
+    quote_payload = cast(dict[str, JsonValue], quote.model_dump(mode="json"))
+    bar_payload: list[JsonValue] = [
+        cast(JsonValue, cast(dict[str, JsonValue], bar.model_dump(mode="json")))
+        for bar in bars
+    ]
+    mid = (quote.bid + quote.ask) / Decimal("2")
+    spread_bps = (quote.ask - quote.bid) / mid * Decimal("10000") if mid else Decimal("0")
+    quote_size_total = quote.bid_size + quote.ask_size
+    imbalance = (
+        (quote.bid_size - quote.ask_size) / quote_size_total
+        if quote_size_total
+        else Decimal("0")
+    )
+    closes = [bar.close for bar in bars]
+    first_close = closes[0] if closes else quote.bid
+    latest_close = closes[-1] if closes else quote.bid
+    return {
+        **quote_payload,
+        "bars": bar_payload,
+        "features": {
+            "quote_mid": str(mid),
+            "quote_spread_bps": str(spread_bps),
+            "quote_imbalance": str(imbalance),
+            "bar_count": len(bars),
+            "bar_return": str((latest_close / first_close) - Decimal("1"))
+            if first_close
+            else "0",
+            "latest_close": str(latest_close),
+        },
+    }
+
+
+def _options_context(candidate: SpreadCandidate) -> dict[str, JsonValue]:
+    return {
+        "long": _contract_context(candidate.long_contract),
+        "short": _contract_context(candidate.short_contract),
+        "geometry": {
+            "net_debit": str(candidate.geometry.net_debit),
+            "spread_width": str(candidate.geometry.spread_width),
+            "break_even_underlying": str(candidate.geometry.break_even_underlying),
+            "option_implied_hurdle": str(candidate.geometry.option_implied_hurdle),
+        },
+    }
+
+
+def _contract_context(contract: Any) -> dict[str, JsonValue]:
+    payload = cast(dict[str, JsonValue], contract.model_dump(mode="json"))
+    bid = contract.bid
+    ask = contract.ask
+    mid = (bid + ask) / Decimal("2") if bid is not None and ask is not None else None
+    payload["quote_features"] = {
+        "mid": None if mid is None else str(mid),
+        "relative_spread": (
+            None
+            if mid in (None, Decimal("0")) or ask is None or bid is None
+            else str((ask - bid) / mid)
+        ),
+        "greeks_available": "greeks" not in contract.missing_values,
+    }
+    return payload
 
 
 def _evidence(

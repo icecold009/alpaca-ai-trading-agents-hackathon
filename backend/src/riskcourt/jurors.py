@@ -51,7 +51,7 @@ def run_juror(
     available_evidence_ids: tuple[str, ...],
     state: TypeSafeState | None = None,
     model_version: str = "stub-v1",
-    prompt_version: str = "jury-v1",
+    prompt_version: str = "jury-v2",
 ) -> ProbabilityForecast:
     request = ProviderRequest(
         request_id=f"request_{spec.juror_id}",

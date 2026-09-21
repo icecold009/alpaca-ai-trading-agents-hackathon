@@ -45,6 +45,14 @@ def test_state_hash_is_stable_and_role_partitions_are_explicit() -> None:
     assert state.for_juror("juror_market").evidence_ids == ("ev_market",)
     assert state.for_juror("juror_volatility").evidence_ids == ("ev_option",)
     assert state.for_juror("juror_catalyst").evidence_ids == ("ev_news",)
+    assert state.for_juror("juror_market").market == {
+        "bid": "640.10",
+        "ask": "640.20",
+    }
+    assert state.for_juror("juror_market").options == {}
+    assert state.for_juror("juror_volatility").options == {"spread_width": "1"}
+    assert state.for_juror("juror_catalyst").market == {}
+    assert state.for_juror("juror_catalyst").options == {}
     assert "raw_reference" not in state.model_dump(mode="json")
 
 
@@ -57,6 +65,16 @@ def test_state_rejects_sensitive_market_or_option_keys() -> None:
             as_of=NOW,
             evidence=(evidence("ev_market", EvidenceType.UNDERLYING_QUOTE),),
             market={"account_id": "should-not-cross-boundary"},
+        )
+
+    with pytest.raises(ValueError, match="sensitive provider state key"):
+        build_typesafe_state(
+            symbol="SPY",
+            outcome=ForecastOutcome.ABOVE_STRIKE,
+            horizon_at=NOW + timedelta(days=7),
+            as_of=NOW,
+            evidence=(evidence("ev_market", EvidenceType.UNDERLYING_QUOTE),),
+            market={"accountId": "should-not-cross-boundary"},
         )
 
 

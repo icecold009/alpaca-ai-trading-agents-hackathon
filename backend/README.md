@@ -26,6 +26,11 @@ The editable install includes FastAPI, Pydantic settings, SQLAlchemy/Alembic wit
   preserving the deterministic result; `typesafe` requires `TYPESAFE_API_KEY` in paper mode.
 - TypeSafe receives only role-scoped market/options/news evidence summaries and timestamps. It
   cannot select strikes, set prices or quantities, bypass a veto, issue approval, or submit an order.
+- `TYPESAFE_MIN_EVIDENCE_QUALITY` defaults to `0.60`. A low-quality TypeSafe judgment abstains for
+  that role; missing catalyst/news evidence no longer blocks market and volatility jurors.
+- TypeSafe metadata records a sanitized state hash, model/question-set versions, primitive
+  probabilities, Choice/Score distributions, evidence quality, latency, and token usage for shadow
+  calibration. `Noul` probability is not treated as model confidence.
 - `ALPACA_PAPER_BASE_URL` must remain `https://paper-api.alpaca.markets`.
 - Setting `RISKCOURT_LIVE_TRADING` or `ALPACA_LIVE_TRADING` to `true` aborts startup. RiskCourt has no live-money mode.
 

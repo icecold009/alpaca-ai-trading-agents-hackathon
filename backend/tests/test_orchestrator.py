@@ -3,9 +3,15 @@ from decimal import Decimal
 
 from riskcourt.domain import ForecastOutcome, OptionRight
 from riskcourt.jurors import DeterministicJurorStub
-from riskcourt.model_provider import ProviderBoundary, ProviderReply, ProviderRequest
+from riskcourt.model_provider import (
+    ProviderBoundary,
+    ProviderReply,
+    ProviderRequest,
+    ProviderUnavailable,
+)
 from riskcourt.option_hurdle import VerticalSpreadGeometry
 from riskcourt.orchestrator import run_jury
+from riskcourt.typesafe_state import NO_SUPPORTED_EVIDENCE
 
 GEOMETRY = VerticalSpreadGeometry(
     underlying_symbol="SPY",
@@ -57,3 +63,35 @@ def test_orchestrator_abstains_on_partial_provider_failure() -> None:
 
     assert result.decision.value == "abstain"
     assert result.reason == "provider request failed"
+
+
+def test_orchestrator_keeps_supported_jurors_when_one_role_lacks_evidence() -> None:
+    class CatalystUnavailableProvider:
+        def complete(self, request: ProviderRequest) -> ProviderReply:
+            if request.payload["juror_id"] == "juror_catalyst":
+                raise ProviderUnavailable(NO_SUPPORTED_EVIDENCE)
+            return ProviderReply(
+                output={
+                    "probability": "0.62",
+                    "calibration_score": "0.80",
+                    "confidence_stake": "0.70",
+                    "evidence_ids": ["quote_spy"],
+                    "rationale": "Supported evidence",
+                    "invalidation": "Evidence becomes stale.",
+                }
+            )
+
+    now = datetime(2026, 8, 30, tzinfo=UTC)
+    result = run_jury(
+        ProviderBoundary(CatalystUnavailableProvider()),
+        GEOMETRY,
+        case_id="case_edge_positive",
+        outcome=ForecastOutcome.ABOVE_STRIKE,
+        produced_at=now,
+        horizon_at=now + timedelta(days=7),
+        evidence_ids=("quote_spy",),
+    )
+
+    assert len(result.forecasts) == 2
+    assert result.abstentions == (("juror_catalyst", NO_SUPPORTED_EVIDENCE),)
+    assert result.aggregate.probability is not None

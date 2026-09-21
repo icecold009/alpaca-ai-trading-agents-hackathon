@@ -26,6 +26,9 @@ describe("RiskCourt personal workstation", () => {
       screen.getByRole("heading", { level: 2, name: "Find the next defensible setup." }),
     ).toBeInTheDocument();
     expect(screen.getByText("Jury odds vs. market hurdle")).toBeInTheDocument();
+    expect(
+      screen.getByText("TypeSafe explains; deterministic RiskCourt decides."),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Market closed" }));
     expect(screen.getByText("Market closed — no order sent")).toBeInTheDocument();

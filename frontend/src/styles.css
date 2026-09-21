@@ -769,6 +769,95 @@ a:focus-visible {
 .detail-panel {
   min-width: 0;
 }
+.typesafe-authority-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 16px;
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(125, 211, 252, 0.08), rgba(167, 139, 250, 0.06));
+  padding: 11px 13px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+.typesafe-authority-banner > div {
+  display: grid;
+  gap: 4px;
+}
+.typesafe-authority-banner strong {
+  color: #e0f2fe;
+  font-size: 11px;
+}
+.typesafe-trace {
+  display: grid;
+  gap: 8px;
+  margin-top: 13px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.trace-heading,
+.trace-detail,
+.trace-distribution > div,
+.trace-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+}
+.trace-heading {
+  justify-content: space-between;
+  color: #c4b5fd;
+  font-weight: 700;
+}
+.trace-heading small,
+.trace-detail,
+.trace-distribution > span {
+  color: var(--muted);
+  font-weight: 500;
+}
+.trace-grid span,
+.trace-detail span,
+.trace-distribution span {
+  white-space: nowrap;
+}
+.trace-grid b,
+.trace-detail b,
+.trace-distribution div span {
+  color: #dbeafe;
+  font-weight: 700;
+}
+.trace-distribution {
+  display: grid;
+  gap: 4px;
+}
+.trace-reason {
+  color: #fcd34d;
+}
+.trace-empty {
+  display: block;
+  margin-top: 12px;
+  color: var(--muted);
+}
+.typesafe-abstentions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  border: 1px solid rgba(252, 211, 77, 0.18);
+  border-radius: 10px;
+  background: rgba(252, 211, 77, 0.05);
+  padding: 10px 12px;
+  color: #fcd34d;
+  font-size: 10px;
+}
+.typesafe-abstentions .eyebrow {
+  width: 100%;
+  color: #fcd34d;
+}
 .juror-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1290,6 +1379,10 @@ a:focus-visible {
   }
   .juror-card p {
     min-height: 0;
+  }
+  .typesafe-authority-banner {
+    align-items: flex-start;
+    flex-direction: column;
   }
   .approval-banner,
   .safety-strip {

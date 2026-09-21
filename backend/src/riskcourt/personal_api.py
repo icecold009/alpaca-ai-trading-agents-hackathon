@@ -613,6 +613,10 @@ def _paper_result_payload(result: Any) -> dict[str, Any]:
         "underlying_symbol": result.intent.underlying_symbol,
         "as_of": result.account.clock.timestamp.isoformat(),
         "forecasts": [forecast.model_dump(mode="json") for forecast in result.jury.forecasts],
+        "juror_abstentions": [
+            {"juror_id": juror_id, "reason": reason}
+            for juror_id, reason in result.jury.abstentions
+        ],
         "strategy": {
             "jury_probability": _decimal_text(
                 edge.jury_probability if edge else result.jury.aggregate.probability

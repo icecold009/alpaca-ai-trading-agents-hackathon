@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     typesafe_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
     typesafe_max_calls: int = Field(default=3, ge=1, le=20)
     typesafe_max_cost_units: Decimal = Field(default=Decimal("3"), ge=0, max_digits=18)
+    typesafe_min_evidence_quality: Decimal = Field(
+        default=Decimal("0.60"), ge=0, le=1, max_digits=8, decimal_places=7
+    )
     riskcourt_ai_mode: AiMode = AiMode.DETERMINISTIC
 
     @model_validator(mode="after")

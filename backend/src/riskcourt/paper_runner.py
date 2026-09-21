@@ -77,7 +77,10 @@ def load_configured_provider(settings: Settings, spec: str | None = None) -> Pro
     )
     typesafe = TypeSafeProviderClient(
         sdk_client,
-        config=TypeSafeProviderConfig(model=settings.typesafe_model),
+        config=TypeSafeProviderConfig(
+            model=settings.typesafe_model,
+            min_evidence_quality=settings.typesafe_min_evidence_quality,
+        ),
     )
     if settings.riskcourt_ai_mode is AiMode.SHADOW:
         shadow_boundary = ProviderBoundary(

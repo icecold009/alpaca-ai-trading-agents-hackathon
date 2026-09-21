@@ -36,10 +36,18 @@ class FakeSdkResponse:
         self.model = "jev-test"
         self.nouls = {"outcome_probability": SimpleNamespace(noul=float(probability))}
         self.choices = {
-            "evidence_anchor": SimpleNamespace(choice=anchor, confidence=0.8)
+            "evidence_anchor": SimpleNamespace(
+                choice=anchor,
+                confidence=0.8,
+                probabilities={anchor: 0.8, "other": 0.2},
+            )
         }
         self.scores = {
-            "evidence_quality": SimpleNamespace(score=1.5, confidence=0.9)
+            "evidence_quality": SimpleNamespace(
+                score=1.5,
+                confidence=0.9,
+                probabilities={0: 0.1, 1: 0.2, 2: 0.7},
+            )
         }
         self.usage = SimpleNamespace(input_tokens=120, output_tokens=12)
 
@@ -111,6 +119,13 @@ def test_valid_typed_judgment_maps_to_existing_provider_contract(
     assert reply.metadata["provider"] == "typesafe"
     assert reply.metadata["input_tokens"] == 120
     assert reply.metadata["state_hash"]
+    assert reply.metadata["evidence_quality"] == "0.75"
+    assert reply.metadata["noul_margin"] == "0.24"
+    answers = reply.metadata["typesafe_answers"]
+    assert isinstance(answers, dict)
+    anchor_answers = answers["evidence_anchor"]
+    assert isinstance(anchor_answers, dict)
+    assert anchor_answers["probabilities"] == {"ev_market": "0.8", "other": "0.2"}
     assert "api_key" not in str(reply.metadata).lower()
     assert client.calls[0]["model"] == "jev-test"
 
@@ -181,6 +196,22 @@ def test_juror_mapping_keeps_calibration_code_owned(monkeypatch: pytest.MonkeyPa
     assert forecast.provider_metadata["validation"] == "passed"
 
 
+def test_low_quality_typed_judgment_abstains(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_fake_sdk(monkeypatch)
+    response = FakeSdkResponse()
+    response.scores = {
+        "evidence_quality": SimpleNamespace(
+            score=0.5,
+            confidence=0.9,
+            probabilities={0: 0.75, 1: 0.2, 2: 0.05},
+        )
+    }
+    provider = TypeSafeProviderClient(FakeSdkClient(response))
+
+    with pytest.raises(ProviderUnavailable, match="low_evidence_quality"):
+        provider.complete(request(complete_state()))
+
+
 def test_shadow_mode_keeps_primary_output_when_typesafe_disagrees(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -204,12 +235,14 @@ def test_shadow_mode_keeps_primary_output_when_typesafe_disagrees(
     reply = ShadowProviderClient(primary, shadow).complete(request(complete_state()))
 
     assert reply.output["probability"] == "0.50"
-    assert reply.metadata["shadow_typesafe"] == {
-        "status": "completed",
-        "probability": "1",
-        "evidence_ids": ["ev_market"],
-        "confidence_stake": "0.825",
-    }
+    shadow_metadata = reply.metadata["shadow_typesafe"]
+    assert isinstance(shadow_metadata, dict)
+    assert shadow_metadata["status"] == "completed"
+    assert shadow_metadata["probability"] == "1"
+    assert shadow_metadata["evidence_ids"] == ["ev_market"]
+    assert shadow_metadata["confidence_stake"] == "0.8"
+    assert shadow_metadata["evidence_quality"] == "0.75"
+    assert shadow_metadata["noul_margin"] == "1"
 
 
 def test_sdk_factory_requires_key_and_does_not_leak_it(monkeypatch: pytest.MonkeyPatch) -> None:

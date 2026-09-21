@@ -65,11 +65,14 @@ class TypeSafeState(ContractModel):
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def for_juror(self, juror_id: str) -> TypeSafeState:
-        """Return the evidence partition allowed for one juror specialty."""
+        """Return the complete state partition allowed for one juror specialty."""
 
         allowed = _allowed_evidence_types(juror_id)
         scoped = tuple(item for item in self.evidence if item.evidence_type in allowed)
-        return self.model_copy(update={"evidence": scoped})
+        market, options = _scope_context(juror_id, self.market, self.options)
+        return self.model_copy(
+            update={"evidence": scoped, "market": market, "options": options}
+        )
 
     def validate_freshness(self, maximum_age: timedelta = MAX_EVIDENCE_AGE) -> None:
         """Reject future or stale observations using the code-owned observation clock."""
@@ -127,13 +130,37 @@ def _allowed_evidence_types(juror_id: str) -> frozenset[EvidenceType]:
     raise ValueError("unknown juror specialty")
 
 
+def _scope_context(
+    juror_id: str,
+    market: dict[str, JsonValue],
+    options: dict[str, JsonValue],
+) -> tuple[dict[str, JsonValue], dict[str, JsonValue]]:
+    """Keep non-evidence context inside the same specialty boundary."""
+
+    if juror_id == "juror_market":
+        return dict(market), {}
+    if juror_id == "juror_volatility":
+        return _market_reference(market), dict(options)
+    if juror_id == "juror_catalyst":
+        return {}, {}
+    raise ValueError("unknown juror specialty")
+
+
+def _market_reference(market: dict[str, JsonValue]) -> dict[str, JsonValue]:
+    """Expose only the underlying reference needed to contextualize options."""
+
+    allowed = {"symbol", "feed", "quoted_at", "bid", "ask"}
+    return {key: value for key, value in market.items() if key in allowed}
+
+
 def _reject_sensitive_keys(value: JsonValue, path: str = "state") -> None:
     if isinstance(value, dict):
         for key, nested in value.items():
             lowered = key.lower()
+            normalized = "".join(character for character in lowered if character.isalnum())
             if any(
-                token in lowered
-                for token in ("api_key", "secret", "credential", "account_id", "order_id")
+                token in normalized
+                for token in ("apikey", "secret", "credential", "accountid", "orderid")
             ):
                 raise ValueError(f"sensitive provider state key: {path}.{key}")
             _reject_sensitive_keys(nested, f"{path}.{key}")

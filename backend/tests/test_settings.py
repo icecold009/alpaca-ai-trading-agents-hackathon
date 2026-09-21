@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Any, cast
 
 import pytest
@@ -19,6 +20,7 @@ def test_recorded_mode_is_credential_free_with_typesafe_defaults() -> None:
     assert settings.riskcourt_ai_mode is AiMode.DETERMINISTIC
     assert settings.typesafe_api_key is None
     assert settings.typesafe_model == "jev-latest"
+    assert settings.typesafe_min_evidence_quality == Decimal("0.60")
 
 
 def test_paper_typesafe_mode_requires_typesafe_key() -> None:

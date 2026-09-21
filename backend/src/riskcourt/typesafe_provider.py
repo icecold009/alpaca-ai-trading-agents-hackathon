@@ -21,7 +21,7 @@ from riskcourt.model_provider import (
 )
 from riskcourt.typesafe_state import NO_SUPPORTED_EVIDENCE, TypeSafeState
 
-QUESTION_SET_VERSION = "riskcourt-typesafe-jury-v1"
+QUESTION_SET_VERSION = "riskcourt-typesafe-jury-v2"
 
 
 class TypeSafeSystemOneClient(Protocol):
@@ -38,6 +38,11 @@ class TypeSafeSystemOneClient(Protocol):
 class TypeSafeProviderConfig:
     model: str = "jev-latest"
     question_set_version: str = QUESTION_SET_VERSION
+    min_evidence_quality: Decimal = Decimal("0.60")
+
+    def __post_init__(self) -> None:
+        if not Decimal("0") <= self.min_evidence_quality <= Decimal("1"):
+            raise ValueError("minimum evidence quality must be between 0 and 1")
 
 
 class TypeSafeProviderClient:
@@ -69,14 +74,21 @@ class TypeSafeProviderClient:
                 questions=_questions(state),
                 model=self._config.model,
             )
-            output, metadata = _map_response(response, state)
+            output, metadata = _map_response(
+                response,
+                state,
+                minimum_quality=self._config.min_evidence_quality,
+            )
             metadata.update(
                 {
                     "provider": "typesafe",
+                    "juror_id": str(request.payload.get("juror_id", "")),
                     "model": _safe_text(_field(response, "model"), self._config.model),
                     "question_set_version": self._config.question_set_version,
                     "state_hash": state.state_hash,
                     "evidence_ids": list(state.evidence_ids),
+                    "evidence_types": [item.evidence_type.value for item in state.evidence],
+                    "minimum_evidence_quality": str(self._config.min_evidence_quality),
                     "latency_ms": round((time.perf_counter() - started) * 1000, 3),
                     "calls": 1,
                     "validation": "passed",
@@ -134,6 +146,26 @@ class ShadowProviderClient:
                 "evidence_ids": shadow.output.get("evidence_ids"),
                 "confidence_stake": shadow.output.get("confidence_stake"),
             }
+            for key in (
+                "provider",
+                "model",
+                "question_set_version",
+                "state_hash",
+                "evidence_types",
+                "evidence_quality",
+                "minimum_evidence_quality",
+                "noul_probability",
+                "noul_margin",
+                "heuristic_confidence",
+                "typesafe_confidence",
+                "typesafe_answers",
+                "input_tokens",
+                "output_tokens",
+                "latency_ms",
+                "validation",
+            ):
+                if key in shadow.metadata:
+                    shadow_metadata[key] = shadow.metadata[key]
         except ProviderUnavailable as error:
             shadow_metadata = {"status": "abstained", "reason": _safe_reason(error)}
         metadata = dict(primary.metadata)
@@ -153,7 +185,20 @@ def create_typesafe_sdk_client(
         client_type = module.__dict__.get("TypeSafeClient")
         if not callable(client_type):
             raise ProviderUnavailable("typesafe SDK client is unavailable")
-        client = client_type(api_key=api_key, model=model, timeout=timeout_seconds)
+        retry_factory = module.__dict__.get("RetryPolicy")
+        retry = (
+            retry_factory(max_retries=0, timeout=timeout_seconds)
+            if callable(retry_factory)
+            else None
+        )
+        client_kwargs: dict[str, object] = {
+            "api_key": api_key,
+            "model": model,
+            "timeout": timeout_seconds,
+        }
+        if retry is not None:
+            client_kwargs["retry"] = retry
+        client = client_type(**client_kwargs)
     except ProviderUnavailable:
         raise
     except Exception as error:
@@ -212,7 +257,10 @@ def _questions(state: TypeSafeState) -> dict[str, object]:
 
 
 def _map_response(
-    response: object, state: TypeSafeState
+    response: object,
+    state: TypeSafeState,
+    *,
+    minimum_quality: Decimal,
 ) -> tuple[dict[str, JsonValue], dict[str, JsonValue]]:
     noul = _answer(response, "nouls", "outcome_probability")
     choice = _answer(response, "choices", "evidence_anchor")
@@ -225,17 +273,20 @@ def _map_response(
         raise ProviderUnavailable("typesafe selected unknown evidence")
     quality_score = _bounded_decimal(_field(score, "score"), maximum=Decimal("2"))
     quality = quality_score / Decimal("2")
-    noul_confidence = min(abs(probability - Decimal("0.5")) * Decimal("2"), Decimal("1"))
-    confidence = _average(
+    if quality < minimum_quality:
+        raise ProviderUnavailable("low_evidence_quality")
+    noul_margin = _bounded_decimal(
+        min(abs(probability - Decimal("0.5")) * Decimal("2"), Decimal("1"))
+    )
+    primitive_confidence = _average(
         (
-            noul_confidence,
             _bounded_decimal(_field(choice, "confidence")),
             _bounded_decimal(_field(score, "confidence")),
         )
     )
     output: dict[str, JsonValue] = {
         "probability": str(probability),
-        "confidence_stake": str(_average((confidence, quality))),
+        "confidence_stake": str(_average((primitive_confidence, quality))),
         "evidence_ids": [anchor],
         "rationale": f"Typed {str(state.outcome.value)} judgment anchored to {anchor}.",
         "invalidation": (
@@ -245,8 +296,28 @@ def _map_response(
     }
     usage = _field(response, "usage")
     metadata: dict[str, JsonValue] = {
-        "typesafe_confidence": str(confidence),
+        "typesafe_confidence": str(primitive_confidence),
+        "noul_probability": str(probability),
+        "noul_margin": str(noul_margin),
+        "heuristic_confidence": str(_average((noul_margin, primitive_confidence))),
         "evidence_quality": str(quality),
+        "evidence_anchor": anchor,
+        "typesafe_answers": {
+            "outcome_probability": {
+                "noul": str(probability),
+                "margin": str(noul_margin),
+            },
+            "evidence_anchor": {
+                "choice": anchor,
+                "confidence": str(_bounded_decimal(_field(choice, "confidence"))),
+                "probabilities": _probability_map(_field(choice, "probabilities")),
+            },
+            "evidence_quality": {
+                "score": str(quality_score),
+                "confidence": str(_bounded_decimal(_field(score, "confidence"))),
+                "probabilities": _probability_map(_field(score, "probabilities")),
+            },
+        },
         "input_tokens": _integer_field(usage, "input_tokens"),
         "output_tokens": _integer_field(usage, "output_tokens"),
     }
@@ -294,6 +365,15 @@ def _integer_field(value: object, name: str) -> int:
     return parsed
 
 
+def _probability_map(value: object) -> dict[str, JsonValue]:
+    if not isinstance(value, Mapping):
+        return {}
+    result: dict[str, JsonValue] = {}
+    for key, raw in value.items():
+        result[str(key)] = str(_bounded_decimal(raw))
+    return result
+
+
 def _cost_units(response: object) -> Decimal:
     usage = _field(response, "usage")
     input_tokens = _integer_field(usage, "input_tokens")
@@ -308,6 +388,11 @@ def _safe_reason(error: ProviderUnavailable) -> str:
     message = str(error)
     return (
         message
-        if message in {NO_SUPPORTED_EVIDENCE, "typesafe selected unknown evidence"}
+        if message
+        in {
+            NO_SUPPORTED_EVIDENCE,
+            "typesafe selected unknown evidence",
+            "low_evidence_quality",
+        }
         else "provider_unavailable"
     )

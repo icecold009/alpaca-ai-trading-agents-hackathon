@@ -9,7 +9,7 @@ import {
   YAxis,
 } from "recharts";
 
-import { recordedCases } from "./recordedCases";
+import { recordedCases, type RecordedCaseView } from "./recordedCases";
 import {
   type AccountSummary,
   type JournalEntry,
@@ -879,6 +879,15 @@ function DecisionDetail({
         </div>
         <StatusBadge verdict={decision.verdict} />
       </div>
+      <div className="typesafe-authority-banner">
+        <div>
+          <span className="eyebrow accent">Typed advisory layer</span>
+          <strong>TypeSafe explains; deterministic RiskCourt decides.</strong>
+        </div>
+        <span>
+          TypeSafe can judge evidence, but it cannot size, approve, veto, or submit an order.
+        </span>
+      </div>
       <div className="juror-grid">
         {item.forecasts.map((forecast) => (
           <article className="juror-card" key={forecast.forecast_id}>
@@ -906,9 +915,20 @@ function DecisionDetail({
               </span>
             </div>
             <p>{forecast.rationale}</p>
+            <TypeSafeTrace forecast={forecast} />
           </article>
         ))}
       </div>
+      {item.juror_abstentions?.length ? (
+        <div className="typesafe-abstentions" role="status">
+          <span className="eyebrow">Typed abstentions</span>
+          {item.juror_abstentions.map((abstention) => (
+            <span key={`${abstention.juror_id}-${abstention.reason}`}>
+              {jurorNames[abstention.juror_id] ?? abstention.juror_id}: {abstention.reason}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div className="decision-metrics">
         <Metric label="Calibrated jury odds" value={percent(item.strategy.jury_probability)} />
         <Metric label="Option hurdle" value={percent(item.strategy.market_hurdle)} />
@@ -1002,6 +1022,79 @@ function DecisionDetail({
         Paper trading is simulated and does not represent future results. RiskCourt is not
         investment advice.
       </p>
+    </div>
+  );
+}
+
+function TypeSafeTrace({ forecast }: { forecast: RecordedCaseView["forecasts"][number] }) {
+  const metadata = forecast.provider_metadata;
+  const trace = metadata?.provider === "typesafe" ? metadata : metadata?.shadow_typesafe;
+  if (!trace) return <small className="trace-empty">Deterministic baseline</small>;
+
+  const answer = trace.typesafe_answers;
+  const anchor = answer?.evidence_anchor?.choice;
+  const choiceProbabilities = answer?.evidence_anchor?.probabilities;
+  const qualityProbabilities = answer?.evidence_quality?.probabilities;
+  return (
+    <div className="typesafe-trace">
+      <div className="trace-heading">
+        <span>{metadata?.provider === "typesafe" ? "TypeSafe telemetry" : "Shadow telemetry"}</span>
+        <small>{trace.status ?? "completed"}</small>
+      </div>
+      <div className="trace-grid">
+        <span>
+          Evidence quality <b>{percent(trace.evidence_quality)}</b>
+        </span>
+        <span>
+          Noul probability <b>{percent(trace.noul_probability)}</b>
+        </span>
+        <span>
+          Noul margin <b>{percent(trace.noul_margin)}</b>
+        </span>
+        <span>
+          Latency <b>{trace.latency_ms ? `${trace.latency_ms} ms` : "—"}</b>
+        </span>
+      </div>
+      <div className="trace-detail">
+        <span>
+          Anchor: <b>{anchor ?? "—"}</b>
+        </span>
+        {trace.model ? (
+          <span>
+            Model: <b>{trace.model}</b>
+          </span>
+        ) : null}
+        {trace.question_set_version ? (
+          <span>
+            Questions: <b>{trace.question_set_version}</b>
+          </span>
+        ) : null}
+      </div>
+      {choiceProbabilities ? (
+        <div className="trace-distribution">
+          <span>Anchor distribution</span>
+          <div>
+            {Object.entries(choiceProbabilities).map(([key, value]) => (
+              <span key={key}>
+                {key}: {percent(value)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {qualityProbabilities ? (
+        <div className="trace-distribution">
+          <span>Quality distribution</span>
+          <div>
+            {Object.entries(qualityProbabilities).map(([key, value]) => (
+              <span key={key}>
+                {key}: {percent(value)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {trace.reason ? <span className="trace-reason">{trace.reason}</span> : null}
     </div>
   );
 }
