@@ -474,6 +474,9 @@ function App() {
             onToggleKillSwitch={() => void toggleKillSwitch()}
           />
         )}
+              <footer style={{ padding: "1rem", textAlign: "center", fontSize: ".8rem", opacity: 0.75 }}>
+          <a href="https://shauryasaria.me" target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textUnderlineOffset: "0.2em" }}>Personal website</a>
+        </footer>
       </main>
     </div>
   );
