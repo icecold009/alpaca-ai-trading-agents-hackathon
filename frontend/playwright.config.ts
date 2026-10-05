@@ -2,7 +2,11 @@ import { defineConfig, devices } from "@playwright/test";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const python = process.platform === "win32" ? ".venv\\Scripts\\python.exe" : ".venv/bin/python";
+const python = process.env.CI
+  ? "python"
+  : process.platform === "win32"
+    ? ".venv\\Scripts\\python.exe"
+    : ".venv/bin/python";
 const e2eStateDirectory = join(tmpdir(), `riskcourt-e2e-${process.pid}`);
 
 export default defineConfig({
