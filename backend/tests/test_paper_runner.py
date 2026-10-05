@@ -16,6 +16,7 @@ from riskcourt.paper_runner import (
     load_provider_client,
     sanitize_result,
 )
+from riskcourt.risk_limits import PortfolioRiskExposure
 
 NOW = datetime(2026, 8, 31, 12, 0, tzinfo=UTC)
 
@@ -27,6 +28,7 @@ def account_state(*, positions: tuple[PositionSnapshot, ...] = ()) -> PaperAccou
             observed_at=NOW,
             status="ACTIVE",
             equity=Decimal("100000"),
+            last_equity=Decimal("99900"),
             options_buying_power=Decimal("50000"),
             options_approved_level=3,
             options_trading_level=3,
@@ -78,7 +80,35 @@ def test_build_risk_state_fails_closed_when_existing_option_risk_is_unknown() ->
     )
 
     with pytest.raises(ValueError, match="existing option risk"):
-        build_risk_state(account_state(positions=(option_position,)), daily_pnl=Decimal("0"))
+        build_risk_state(account_state(positions=(option_position,)))
+
+
+def test_build_risk_state_uses_reconciled_open_risk_and_persistent_kill_switch() -> None:
+    option_position = PositionSnapshot(
+        symbol="SPY260911C00640000",
+        asset_class="us_option",
+        quantity=Decimal("1"),
+        side="long",
+        market_value=Decimal("100"),
+        unrealized_pl=Decimal("0"),
+    )
+    exposure = PortfolioRiskExposure(
+        open_options_risk=Decimal("1950"),
+        open_option_positions=1,
+        pending_option_orders=0,
+        kill_switch_enabled=True,
+    )
+
+    risk = build_risk_state(
+        account_state(positions=(option_position,)),
+        exposure=exposure,
+        broker_positions_reconciled=True,
+    )
+
+    verdict = risk.authorize_execution(Decimal("100"))
+    assert verdict.passed is False
+    assert "kill_switch_enabled" in verdict.reasons
+    assert "open_options_risk_cap" in verdict.reasons
 
 
 def test_build_risk_state_preserves_pending_option_order_count() -> None:
@@ -97,9 +127,15 @@ def test_build_risk_state_preserves_pending_option_order_count() -> None:
         }
     )
 
-    risk = build_risk_state(state, daily_pnl=Decimal("-10"))
+    risk = build_risk_state(state)
 
     assert risk.authorize_execution(Decimal("100")).passed is False
+
+
+def test_build_risk_state_uses_broker_equity_change_for_daily_pnl() -> None:
+    risk = build_risk_state(account_state())
+
+    assert risk.authorize_execution(Decimal("100")).passed is True
 
 
 def test_sanitize_result_removes_order_reference_and_keeps_status() -> None:

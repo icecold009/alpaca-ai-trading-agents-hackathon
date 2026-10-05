@@ -1,8 +1,10 @@
 from dataclasses import replace
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any, cast
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -24,9 +26,15 @@ from riskcourt.domain import (
 )
 from riskcourt.event_store import AppendOnlyDecisionLog, PersistentDecisionLog
 from riskcourt.jurors import DeterministicJurorStub
-from riskcourt.model_provider import ProviderBoundary, ProviderUnavailable
+from riskcourt.model_provider import (
+    ProviderBoundary,
+    ProviderReply,
+    ProviderRequest,
+    ProviderUnavailable,
+)
 from riskcourt.paper_loop import (
     PaperCycleDependencies,
+    _market_context,
     record_filled_pnl,
     run_paper_cycle,
 )
@@ -41,6 +49,11 @@ class FakeAccount:
 
     def fetch(self) -> PaperAccountState:
         return self.state
+
+    def market_close(self, on_date: date) -> datetime:
+        return datetime.combine(
+            on_date, time(16), tzinfo=ZoneInfo("America/New_York")
+        ).astimezone(UTC)
 
 
 class FakeMarket:
@@ -77,6 +90,9 @@ class FakeClient:
             filled_at=None,
             replaced_by=None,
         )
+
+    def get_order_by_client_id(self, _client_id: str) -> None:
+        return None
 
 
 def account(*, market_open: bool = True, level: int = 3) -> PaperAccountState:
@@ -121,6 +137,15 @@ def market() -> UnderlyingMarketState:
     )
 
 
+def test_market_context_includes_code_owned_forecast_reference() -> None:
+    context = _market_context(market(), forecast_reference=Decimal("640.05"))
+
+    assert context["forecast_reference"] == {
+        "kind": "deterministic_break_even_underlying",
+        "value": "640.05",
+    }
+
+
 def chain() -> OptionChainState:
     def contract(strike: str) -> ChainContract:
         expiry = date(2026, 9, 11)
@@ -140,6 +165,8 @@ def chain() -> OptionChainState:
             theta=Decimal("-0.1"),
             vega=Decimal("0.2"),
             missing_values=(),
+            active=True,
+            tradable=True,
         )
 
     return OptionChainState(
@@ -205,6 +232,90 @@ def test_paper_cycle_submits_one_order_and_records_audit_chain() -> None:
         DecisionEventType.EXECUTION_UPDATED,
     ]
     log.verify()
+
+
+def test_paper_cycle_evaluates_later_ranked_candidate_when_first_edge_fails() -> None:
+    class CandidateAwareProvider:
+        def __init__(self) -> None:
+            self.thresholds: list[str] = []
+
+        def complete(self, request: ProviderRequest) -> ProviderReply:
+            payload = cast(Any, request.payload)
+            state = payload["typesafe_state"]
+            event = state["market"]["forecast_event"]
+            threshold = str(event["threshold"])
+            self.thresholds.append(threshold)
+            probability = "0.50" if Decimal(threshold) >= Decimal("641") else "0.90"
+            return ProviderReply(
+                {
+                    "probability": probability,
+                    "calibration_score": "0.80",
+                    "confidence_stake": "0.70",
+                    "evidence_ids": payload["available_evidence_ids"],
+                    "rationale": "Bounded candidate-search fixture",
+                    "invalidation": "Invalidate if supplied evidence becomes stale.",
+                }
+            )
+
+    provider = CandidateAwareProvider()
+    deps, _, _ = dependencies()
+    deps = replace(deps, provider=ProviderBoundary(provider, max_calls=18))
+    expiry = date(2026, 9, 11)
+    contracts = (
+        _candidate_contract("640", "1.80", "1.90", expiry),
+        _candidate_contract("641", "0.90", "1.00", expiry),
+        _candidate_contract("645", "1.00", "1.20", expiry),
+    )
+    candidate_chain = OptionChainState(
+        underlying_symbol="SPY",
+        feed="indicative",
+        expiration_from=expiry,
+        expiration_to=expiry,
+        strike_from=Decimal("640"),
+        strike_to=Decimal("645"),
+        contracts=contracts,
+    )
+    deps = replace(deps, chain=FakeChain(candidate_chain))  # type: ignore[arg-type]
+    deps = replace(deps, event_log=AppendOnlyDecisionLog("case_ranked_search"))
+
+    result = run_paper_cycle(deps, case_id="case_ranked_search", now=NOW)
+
+    assert result.status == "submitted"
+    assert result.candidate is not None
+    assert result.candidate.geometry.spread_width == Decimal("5")
+    assert [Decimal(value) for value in provider.thresholds] == [
+        Decimal("641"),
+        Decimal("641"),
+        Decimal("640.9"),
+        Decimal("640.9"),
+    ]
+
+
+def _candidate_contract(
+    strike: str,
+    bid: str,
+    ask: str,
+    expiry: date,
+) -> ChainContract:
+    return ChainContract(
+        occ_symbol=f"SPY{expiry.strftime('%y%m%d')}C{int(Decimal(strike) * 1000):08d}",
+        underlying_symbol="SPY",
+        expiry=expiry,
+        strike=Decimal(strike),
+        right=OptionRight.CALL,
+        feed="indicative",
+        quoted_at=NOW,
+        bid=Decimal(bid),
+        ask=Decimal(ask),
+        implied_volatility=Decimal("0.2"),
+        delta=Decimal("0.5"),
+        gamma=Decimal("0.1"),
+        theta=Decimal("-0.1"),
+        vega=Decimal("0.2"),
+        missing_values=(),
+        active=True,
+        tradable=True,
+    )
 
 
 @pytest.mark.parametrize(

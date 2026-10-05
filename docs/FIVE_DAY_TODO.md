@@ -84,9 +84,9 @@ user-owned or depends on an external service.
 - [ ] Capture the official Alpaca MCP or CLI transcript: version/availability, paper
   account read, options level, market clock, SPY chain, order schema/dry-run, separated
   read versus mutation capabilities, timestamps, and redacted identifiers.
-- [ ] During market hours, run the read-only preflight first, then explicitly run one
-  tiny paper cycle with a private provider and known daily P&L:
-  `backend\\.venv\\Scripts\\python.exe backend\\scripts\\run_paper_cycle.py --submit --provider <private_module>:<factory> --daily-pnl <known_value> --case-id <new_case_id>`.
+- [ ] During market hours, run the read-only preflight first, then separately decide
+  whether to authorize one tiny paper cycle with a private provider:
+  `backend\\.venv\\Scripts\\python.exe backend\\scripts\\run_paper_cycle.py --submit --provider <private_module>:<factory> --case-id <new_case_id>`.
 - [ ] Confirm the order is one eligible SPY defined-risk spread (or documented Level-2
   fallback), then privately preserve the account/order linkage, approval, lifecycle
   terminal state, Decision Card hash, and realized/unrealized paper P&L.

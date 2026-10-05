@@ -26,6 +26,16 @@ For a same-expiry vertical debit spread, `hurdle = (net debit + slippage buffer)
 
 Recorded mode is the default and requires no credentials or network access.
 
+The optional juror provider is configured with RISKCOURT_AI_MODE=deterministic|shadow|typesafe.
+TypeSafe is limited to typed probability, evidence selection, and evidence quality judgments;
+deterministic calibration, spread selection, sizing, approval, kill-switch, and Alpaca execution
+remain authoritative. Shadow mode records a sanitized comparison without changing the decision,
+and active TypeSafe mode fails closed on missing, stale, unknown, malformed, or low-quality output.
+Missing news evidence is isolated to the catalyst juror, while supported market and options jurors
+can continue. TypeSafe telemetry retains sanitized primitive distributions, evidence quality,
+latency, usage, model version, and state hash for replay calibration. `Noul` probability is kept as
+a probability/margin rather than mislabeled as confidence.
+
 ```powershell
 # backend
 cd backend

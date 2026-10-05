@@ -9,14 +9,16 @@ import {
   YAxis,
 } from "recharts";
 
-import { recordedCases } from "./recordedCases";
+import { recordedCases, type RecordedCaseView } from "./recordedCases";
 import {
   type AccountSummary,
+  type ExitPreview,
   type JournalEntry,
   type PersonalDecision,
   type Portfolio,
   personalApi,
 } from "./personalApi";
+import { loadRecordedCases } from "./runtime";
 
 type View = "overview" | "opportunities" | "portfolio" | "journal" | "settings";
 type ReplayState =
@@ -117,6 +119,10 @@ function money(value: string | number | null | undefined) {
   }).format(Number(value));
 }
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "unknown backend error";
+}
+
 function shortTime(value: string | undefined) {
   if (!value) return "—";
   return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(
@@ -139,6 +145,10 @@ function App() {
   const [watchlist, setWatchlist] = useState<string[]>(["SPY", "QQQ"]);
   const [replayState, setReplayState] = useState<ReplayState>("recorded");
   const [runtimeSource, setRuntimeSource] = useState<"fixture" | "api">("fixture");
+  const [apiConnected, setApiConnected] = useState<boolean | null>(null);
+  const [killSwitchKnown, setKillSwitchKnown] = useState(false);
+  const [serverDecisionIds, setServerDecisionIds] = useState<string[]>([]);
+  const [exitPreviews, setExitPreviews] = useState<Record<string, ExitPreview | undefined>>({});
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("Ready for a manual scan.");
   const [approval, setApproval] = useState<{
@@ -150,9 +160,8 @@ function App() {
 
   const selectedDecision =
     decisions.find((item) => item.decision_id === selectedDecisionId) ?? decisions[0];
-  const selectedCase = selectedDecision?.payload;
   const mode = account.mode;
-  const isKillSwitchEnabled = portfolio.kill_switch.enabled;
+  const isKillSwitchEnabled = killSwitchKnown ? portfolio.kill_switch.enabled : null;
 
   useEffect(() => {
     if (import.meta.env.MODE === "test") return;
@@ -163,20 +172,52 @@ function App() {
       personalApi.watchlist(),
       personalApi.decisions(),
       personalApi.journal(),
+      loadRecordedCases(),
     ]).then((results) => {
       if (!active) return;
-      const [accountResult, portfolioResult, watchlistResult, decisionsResult, journalResult] =
-        results;
+      const [
+        accountResult,
+        portfolioResult,
+        watchlistResult,
+        decisionsResult,
+        journalResult,
+        casesResult,
+      ] = results;
+      const connected = results.slice(0, 5).some((result) => result.status === "fulfilled");
+      setApiConnected(connected);
       if (accountResult.status === "fulfilled") setAccount(accountResult.value);
-      if (portfolioResult.status === "fulfilled") setPortfolio(portfolioResult.value);
+      if (portfolioResult.status === "fulfilled") {
+        setPortfolio(portfolioResult.value);
+        setAccount(portfolioResult.value.account);
+        setKillSwitchKnown(true);
+      }
       if (watchlistResult.status === "fulfilled")
         setWatchlist(watchlistResult.value.symbols.map((item) => item.symbol));
-      if (decisionsResult.status === "fulfilled" && decisionsResult.value.decisions.length) {
+      if (decisionsResult.status === "fulfilled") {
         setRuntimeSource("api");
         setDecisions(decisionsResult.value.decisions);
-        setSelectedDecisionId(decisionsResult.value.decisions[0].decision_id);
+        setServerDecisionIds(decisionsResult.value.decisions.map((item) => item.decision_id));
+        setSelectedDecisionId(decisionsResult.value.decisions[0]?.decision_id ?? "");
+      } else if (casesResult.status === "fulfilled" && casesResult.value) {
+        setDecisions(
+          casesResult.value.map((payload, index) => ({
+            decision_id: `recorded_${payload.case_id}`,
+            scan_id: "recorded-runtime",
+            case_id: payload.case_id,
+            mode: "recorded",
+            symbol: payload.underlying_symbol,
+            verdict: payload.verdict.decision,
+            status: "ready",
+            as_of: payload.as_of,
+            freshness_until: payload.as_of,
+            maximum_loss: payload.verdict.maximum_loss,
+            created_at: new Date(Date.now() - index * 60_000).toISOString(),
+            payload,
+          })),
+        );
       }
       if (journalResult.status === "fulfilled") setJournal(journalResult.value.entries);
+      if (!connected) setNotice("Local API is disconnected. Recorded fixtures are read-only.");
     });
     return () => {
       active = false;
@@ -200,20 +241,22 @@ function App() {
     setNotice("Scanning the configured watchlist…");
     try {
       const result = await personalApi.scan(watchlist);
-      if (result.decisions.length) {
-        setRuntimeSource("api");
-        setDecisions(result.decisions);
-        setSelectedDecisionId(result.decisions[0].decision_id);
-        setView("opportunities");
-      }
+      setRuntimeSource("api");
+      setApiConnected(true);
+      setDecisions(result.decisions);
+      setServerDecisionIds(result.decisions.map((item) => item.decision_id));
+      setSelectedDecisionId(result.decisions[0]?.decision_id ?? "");
+      setApproval(null);
+      setView("opportunities");
       setNotice(
         result.failures.length
           ? `Scan completed with ${result.failures.length} safe abstention(s).`
-          : "Scan completed. Review the newest opportunity.",
+          : result.decisions.length
+            ? "Scan completed. Review the newest opportunity."
+            : "Scan completed. No supported opportunities were produced.",
       );
-    } catch {
-      setNotice("Backend unavailable; showing the credential-free recorded workspace.");
-      setView("opportunities");
+    } catch (error) {
+      setNotice(`Scan failed; no new results were loaded: ${errorMessage(error)}`);
     } finally {
       setBusy(false);
     }
@@ -221,45 +264,40 @@ function App() {
 
   async function vetoSelected() {
     if (!selectedDecision) return;
+    if (!serverDecisionIds.includes(selectedDecision.decision_id)) {
+      setNotice("Veto needs a backend decision record. Recorded fixtures are read-only.");
+      return;
+    }
     setBusy(true);
     try {
-      await personalApi.veto(selectedDecision.decision_id);
-    } catch {
-      /* local fallback */
+      const updated = await personalApi.veto(selectedDecision.decision_id);
+      setDecisions((items) =>
+        items.map((item) => (item.decision_id === updated.decision_id ? updated : item)),
+      );
+      setApproval(null);
+      setNotice("Decision vetoed by the backend. No order can follow this record.");
+    } catch (error) {
+      setNotice(`Veto failed; decision state is unchanged: ${errorMessage(error)}`);
+    } finally {
+      setBusy(false);
     }
-    setDecisions((items) =>
-      items.map((item) =>
-        item.decision_id === selectedDecision.decision_id
-          ? { ...item, status: "vetoed", verdict: "veto" }
-          : item,
-      ),
-    );
-    setApproval(null);
-    setNotice("Decision vetoed. No order can follow this record.");
-    setBusy(false);
   }
 
   async function approveSelected() {
     if (!selectedDecision) return;
+    if (!serverDecisionIds.includes(selectedDecision.decision_id)) {
+      setApproval(null);
+      setNotice("Approval needs a backend decision record. Recorded fixtures are read-only.");
+      return;
+    }
     setBusy(true);
+    setApproval(null);
     try {
       const result = await personalApi.approve(selectedDecision.decision_id);
       setApproval(result.approval);
       setNotice("Approval prepared. Review every order field before submitting.");
-    } catch {
-      if (
-        selectedCase?.verdict?.decision === "approve" ||
-        selectedCase?.verdict?.decision === "resize"
-      ) {
-        const localApproval = {
-          approval_id: `local_approval_${selectedDecision.case_id}`,
-          expires_at: new Date(Date.now() + 300_000).toISOString(),
-          quantity: selectedCase.verdict.approved_quantity,
-          maximum_loss: selectedCase.verdict.maximum_loss,
-        };
-        setApproval(localApproval);
-        setNotice("Local approval preview prepared. Recorded mode cannot submit a broker order.");
-      } else setNotice("This decision is not eligible for approval.");
+    } catch (error) {
+      setNotice(`Approval failed; no approval was prepared: ${errorMessage(error)}`);
     } finally {
       setBusy(false);
     }
@@ -271,18 +309,20 @@ function App() {
       setNotice("Recorded mode is read-only. Switch to paper mode to submit an Alpaca order.");
       return;
     }
+    if (!selectedDecision || !serverDecisionIds.includes(selectedDecision.decision_id)) {
+      setNotice(
+        "Paper submission requires a backend decision and approval; fixture records cannot submit.",
+      );
+      return;
+    }
     setBusy(true);
     try {
-      const result = await personalApi.submit(
-        approval.approval_id,
-        `riskcourt_${selectedDecision?.case_id ?? "order"}_${Date.now()}`,
-      );
-      setNotice(
-        result.replayed
-          ? "Existing paper submission loaded safely."
-          : "Paper order submitted and recorded.",
-      );
+      const result = await personalApi.submit(approval.approval_id);
       setApproval(null);
+      const refreshed = await refreshPortfolioFromApi();
+      setNotice(
+        `${result.replayed ? "Existing paper submission reconciled." : "Paper order accepted."} ${refreshed ? "Portfolio refreshed." : "Portfolio refresh failed; order outcome is still recorded above."}`,
+      );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Paper submission was rejected safely.");
     } finally {
@@ -295,58 +335,138 @@ function App() {
       ? watchlist.filter((item) => item !== symbol)
       : [...watchlist, symbol];
     if (!next.length) return;
-    setWatchlist(next);
+    setBusy(true);
     try {
-      await personalApi.saveWatchlist(next);
-    } catch {
-      setNotice("Watchlist saved locally; backend is unavailable.");
+      const result = await personalApi.saveWatchlist(next);
+      setWatchlist(result.symbols.filter((item) => item.enabled).map((item) => item.symbol));
+      setApiConnected(true);
+      setNotice("Watchlist saved by the backend.");
+    } catch (error) {
+      setNotice(`Watchlist was not saved: ${errorMessage(error)}`);
+    } finally {
+      setBusy(false);
     }
   }
 
   async function toggleKillSwitch() {
+    if (isKillSwitchEnabled === null) {
+      setNotice("Kill switch state is unknown. Reconnect and refresh before changing it.");
+      return;
+    }
     const enabled = !isKillSwitchEnabled;
+    setBusy(true);
     try {
       const result = await personalApi.killSwitch(
         enabled,
         enabled ? "Manual operator pause" : "Manual operator resume",
       );
       setPortfolio((current) => ({ ...current, kill_switch: result.kill_switch }));
-    } catch {
-      setPortfolio((current) => ({
-        ...current,
-        kill_switch: {
-          ...current.kill_switch,
-          enabled,
-          reason: enabled ? "Manual operator pause" : "",
-        },
-      }));
+      setKillSwitchKnown(true);
+      setApiConnected(true);
+      setNotice(
+        enabled ? "Kill switch enabled by the backend." : "Kill switch disabled by the backend.",
+      );
+    } catch (error) {
+      setKillSwitchKnown(false);
+      setNotice(
+        `Kill switch state is unknown; backend did not confirm the change: ${errorMessage(error)}`,
+      );
+    } finally {
+      setBusy(false);
     }
-    setNotice(
-      enabled
-        ? "Kill switch enabled. New entries are blocked."
-        : "Kill switch disabled. Review the next decision before submitting.",
-    );
   }
 
-  async function addJournalEntry(body: string) {
-    if (!body.trim()) return;
+  async function addJournalEntry(body: string): Promise<boolean> {
+    if (!body.trim()) return false;
     try {
       const result = await personalApi.journalEntry(body, selectedDecision?.decision_id);
       setJournal((items) => [result.entry, ...items]);
+      setNotice("Journal entry saved by the backend.");
+      return true;
     } catch {
-      const timestamp = new Date().toISOString();
-      setJournal((items) => [
-        {
-          entry_id: `local_${Date.now()}`,
-          decision_id: selectedDecision?.decision_id ?? null,
-          body: body.trim(),
-          created_at: timestamp,
-          updated_at: timestamp,
-        },
-        ...items,
-      ]);
+      setNotice("Journal entry was not saved; the backend did not confirm persistence.");
+      return false;
     }
-    setNotice("Journal entry saved.");
+  }
+
+  async function refreshPortfolioFromApi(): Promise<boolean> {
+    const [accountResult, portfolioResult, decisionsResult, journalResult, watchlistResult] =
+      await Promise.allSettled([
+        personalApi.account(),
+        personalApi.portfolio(),
+        personalApi.decisions(),
+        personalApi.journal(),
+        personalApi.watchlist(),
+      ]);
+    const connected = [
+      accountResult,
+      portfolioResult,
+      decisionsResult,
+      journalResult,
+      watchlistResult,
+    ].some((result) => result.status === "fulfilled");
+    setApiConnected(connected);
+    if (accountResult.status === "fulfilled") setAccount(accountResult.value);
+    if (portfolioResult.status === "fulfilled") {
+      setPortfolio(portfolioResult.value);
+      setAccount(portfolioResult.value.account);
+      setKillSwitchKnown(true);
+    }
+    if (decisionsResult.status === "fulfilled") {
+      setRuntimeSource("api");
+      setDecisions(decisionsResult.value.decisions);
+      setServerDecisionIds(decisionsResult.value.decisions.map((item) => item.decision_id));
+    }
+    if (journalResult.status === "fulfilled") setJournal(journalResult.value.entries);
+    if (watchlistResult.status === "fulfilled")
+      setWatchlist(
+        watchlistResult.value.symbols.filter((item) => item.enabled).map((item) => item.symbol),
+      );
+    return portfolioResult.status === "fulfilled";
+  }
+
+  async function previewExit(positionId: string) {
+    setBusy(true);
+    try {
+      const preview = await personalApi.exitPreview(positionId);
+      setExitPreviews((current) => ({ ...current, [positionId]: preview }));
+      await refreshPortfolioFromApi();
+      setNotice(
+        preview.confirm_required
+          ? `Exit preview ready for ${preview.approval?.quantity ?? 0} contract(s). Confirm separately to submit.`
+          : `Exit preview: ${preview.reason}`,
+      );
+    } catch (error) {
+      setExitPreviews(
+        (current) => ({ ...current, [positionId]: undefined }) as Record<string, ExitPreview>,
+      );
+      setNotice(`Exit preview failed; no exit was submitted: ${errorMessage(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmExit(positionId: string) {
+    const preview = exitPreviews[positionId];
+    if (!preview?.approval || !preview.confirm_required) {
+      setNotice("A fresh confirmed exit preview is required before submission.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await personalApi.exitSubmit(positionId);
+      setExitPreviews(
+        (current) => ({ ...current, [positionId]: undefined }) as Record<string, ExitPreview>,
+      );
+      const refreshed = await refreshPortfolioFromApi();
+      setNotice(
+        `${result.replayed ? "Existing exit order reconciled." : "Exit order accepted."} ${refreshed ? "Portfolio refreshed." : "Portfolio refresh failed."}`,
+      );
+    } catch (error) {
+      setNotice(`Exit submission failed; reconcile before retrying: ${errorMessage(error)}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function openDecision(decisionId: string) {
@@ -407,7 +527,15 @@ function App() {
           </div>
           <div className="topbar-actions">
             <span className="source-pill">
-              {runtimeSource === "api" ? "Local API connected" : "Fixture fallback"}
+              {runtimeSource === "api"
+                ? "Local API connected"
+                : apiConnected === false
+                  ? "API disconnected · fixtures read-only"
+                  : apiConnected === null
+                    ? "Checking local API"
+                    : apiConnected
+                      ? "Local API reachable · recorded fixtures"
+                      : "Recorded fixtures"}
             </span>
             <button
               className="button button-primary"
@@ -438,6 +566,7 @@ function App() {
             decisions={decisions}
             chartData={chartData}
             onOpenDecision={openDecision}
+            killSwitchEnabled={isKillSwitchEnabled}
             onToggleKillSwitch={() => void toggleKillSwitch()}
           />
         )}
@@ -454,10 +583,21 @@ function App() {
             onSubmit={() => void submitSelected()}
             busy={busy}
             mode={mode}
+            canMutateDecision={Boolean(
+              selectedDecision && serverDecisionIds.includes(selectedDecision.decision_id),
+            )}
           />
         )}
         {view === "portfolio" && (
-          <PortfolioView portfolio={portfolio} chartData={chartData} decisions={decisions} />
+          <PortfolioView
+            portfolio={portfolio}
+            exitPreviews={exitPreviews}
+            busy={busy}
+            mode={mode}
+            apiConnected={apiConnected === true}
+            onPreviewExit={(positionId) => void previewExit(positionId)}
+            onConfirmExit={(positionId) => void confirmExit(positionId)}
+          />
         )}
         {view === "journal" && (
           <JournalView
@@ -474,6 +614,16 @@ function App() {
             onToggleKillSwitch={() => void toggleKillSwitch()}
           />
         )}
+        <footer style={{ padding: "1rem", textAlign: "center", fontSize: ".8rem", opacity: 0.75 }}>
+          <a
+            href="https://shauryasaria.me"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "inherit", textUnderlineOffset: "0.2em" }}
+          >
+            Personal website
+          </a>
+        </footer>
       </main>
     </div>
   );
@@ -525,6 +675,7 @@ function OverviewView({
   decisions,
   chartData,
   onOpenDecision,
+  killSwitchEnabled,
   onToggleKillSwitch,
 }: {
   account: AccountSummary;
@@ -532,6 +683,7 @@ function OverviewView({
   decisions: PersonalDecision[];
   chartData: Array<{ name: string; pnl: number }>;
   onOpenDecision: (id: string) => void;
+  killSwitchEnabled: boolean | null;
   onToggleKillSwitch: () => void;
 }) {
   const latest = decisions[0];
@@ -694,22 +846,31 @@ function OverviewView({
         <div>
           <span className="eyebrow">Operator control</span>
           <h3>
-            {portfolio.kill_switch.enabled
-              ? "New entries are paused."
-              : "The court is armed, not automatic."}
+            {killSwitchEnabled === null
+              ? "Kill switch status is unknown."
+              : killSwitchEnabled
+                ? "New entries are paused."
+                : "The court is armed, not automatic."}
           </h3>
           <p>
-            {portfolio.kill_switch.enabled
-              ? "Risk-reducing exits remain available. Review the reason before resuming."
-              : "Every paper order requires a fresh snapshot and an explicit confirmation."}
+            {killSwitchEnabled === null
+              ? "Connect to the local API to read the authoritative safety state."
+              : killSwitchEnabled
+                ? "Risk-reducing exits remain available. Review the reason before resuming."
+                : "Every paper order requires a fresh snapshot and an explicit confirmation."}
           </p>
         </div>
         <button
-          className={`button ${portfolio.kill_switch.enabled ? "button-primary" : "button-ghost"}`}
+          className={`button ${killSwitchEnabled ? "button-primary" : "button-ghost"}`}
           type="button"
           onClick={onToggleKillSwitch}
+          disabled={killSwitchEnabled === null}
         >
-          {portfolio.kill_switch.enabled ? "Resume entries" : "Enable kill switch"}
+          {killSwitchEnabled === null
+            ? "Kill switch unknown"
+            : killSwitchEnabled
+              ? "Resume entries"
+              : "Enable kill switch"}
         </button>
       </section>
     </div>
@@ -728,6 +889,7 @@ function OpportunitiesView({
   onSubmit,
   busy,
   mode,
+  canMutateDecision,
 }: {
   decisions: PersonalDecision[];
   selectedDecision?: PersonalDecision;
@@ -745,6 +907,7 @@ function OpportunitiesView({
   onSubmit: () => void;
   busy: boolean;
   mode: "recorded" | "paper";
+  canMutateDecision: boolean;
 }) {
   const selectedCase = selectedDecision?.payload;
   const isApproved =
@@ -790,36 +953,43 @@ function OpportunitiesView({
             <span>Risk</span>
             <span>Status</span>
           </div>
-          {decisions.map((decision) => (
-            <button
-              key={decision.decision_id}
-              type="button"
-              className={`opportunity-row ${decision.decision_id === selectedDecision?.decision_id ? "selected" : ""}`}
-              onClick={() => onOpenDecision(decision.decision_id)}
-            >
-              <span>
-                <strong>{decision.symbol}</strong>
-                <small>{decision.payload.name}</small>
-              </span>
-              <span>
-                <strong
-                  className={
-                    Number(decision.payload.strategy.probability_edge) >= 0
-                      ? "positive"
-                      : "negative"
-                  }
-                >
-                  {percent(decision.payload.strategy.probability_edge, " pp")}
-                </strong>
-                <small>{percent(decision.payload.strategy.jury_probability)} jury</small>
-              </span>
-              <span>
-                <strong>{money(decision.maximum_loss)}</strong>
-                <small>max loss</small>
-              </span>
-              <StatusBadge verdict={decision.verdict} />
-            </button>
-          ))}
+          {decisions.length ? (
+            decisions.map((decision) => (
+              <button
+                key={decision.decision_id}
+                type="button"
+                className={`opportunity-row ${decision.decision_id === selectedDecision?.decision_id ? "selected" : ""}`}
+                onClick={() => onOpenDecision(decision.decision_id)}
+              >
+                <span>
+                  <strong>{decision.symbol}</strong>
+                  <small>{decision.payload.name}</small>
+                </span>
+                <span>
+                  <strong
+                    className={
+                      Number(decision.payload.strategy.probability_edge) >= 0
+                        ? "positive"
+                        : "negative"
+                    }
+                  >
+                    {percent(decision.payload.strategy.probability_edge, " pp")}
+                  </strong>
+                  <small>{percent(decision.payload.strategy.jury_probability)} jury</small>
+                </span>
+                <span>
+                  <strong>{money(decision.maximum_loss)}</strong>
+                  <small>max loss</small>
+                </span>
+                <StatusBadge verdict={decision.verdict} />
+              </button>
+            ))
+          ) : (
+            <EmptyState
+              title="No backend decisions"
+              detail="Run a scan when the local API and evidence providers are ready."
+            />
+          )}
         </div>
         <DecisionDetail
           decision={selectedDecision}
@@ -830,6 +1000,7 @@ function OpportunitiesView({
           onSubmit={onSubmit}
           busy={busy}
           mode={mode}
+          canMutateDecision={canMutateDecision}
         />
       </section>
     </div>
@@ -845,6 +1016,7 @@ function DecisionDetail({
   onSubmit,
   busy,
   mode,
+  canMutateDecision,
 }: {
   decision?: PersonalDecision;
   isApproved: boolean;
@@ -859,6 +1031,7 @@ function DecisionDetail({
   onSubmit: () => void;
   busy: boolean;
   mode: "recorded" | "paper";
+  canMutateDecision: boolean;
 }) {
   if (!decision)
     return (
@@ -879,28 +1052,62 @@ function DecisionDetail({
         </div>
         <StatusBadge verdict={decision.verdict} />
       </div>
+      <div className="typesafe-authority-banner">
+        <div>
+          <span className="eyebrow accent">Typed advisory layer</span>
+          <strong>TypeSafe explains; deterministic RiskCourt decides.</strong>
+        </div>
+        <span>
+          TypeSafe can judge evidence, but it cannot size, approve, veto, or submit an order.
+        </span>
+      </div>
       <div className="juror-grid">
         {item.forecasts.map((forecast) => (
           <article className="juror-card" key={forecast.forecast_id}>
             <div className="juror-title">
               <span>{jurorNames[forecast.juror_id] ?? forecast.juror_id}</span>
-              <small>{forecast.evidence_ids.length} refs</small>
+              <small>
+                {forecast.evidence_ids.length} refs ·{" "}
+                {forecast.provider_metadata?.provider === "typesafe"
+                  ? "TypeSafe" +
+                    (forecast.provider_metadata.model
+                      ? " · " + forecast.provider_metadata.model
+                      : "")
+                  : forecast.provider_metadata?.shadow_typesafe
+                    ? "Shadow · " + (forecast.provider_metadata.shadow_typesafe.status ?? "unknown")
+                    : "Deterministic"}
+              </small>
             </div>
             <strong>{percent(forecast.probability)}</strong>
             <div className="juror-meta">
               <span>
-                Calibration <b>{percent(forecast.calibration_score)}</b>
+                Configured prior <b>{percent(forecast.calibration_score)}</b>
               </span>
               <span>
                 Stake <b>{percent(forecast.confidence_stake)}</b>
               </span>
             </div>
             <p>{forecast.rationale}</p>
+            <TypeSafeTrace forecast={forecast} />
           </article>
         ))}
       </div>
+      <p className="muted-label">
+        Forecast shrinkage uses fixed code-owned priors; saved outcomes are not used for
+        calibration.
+      </p>
+      {item.juror_abstentions?.length ? (
+        <div className="typesafe-abstentions" role="status">
+          <span className="eyebrow">Typed abstentions</span>
+          {item.juror_abstentions.map((abstention) => (
+            <span key={`${abstention.juror_id}-${abstention.reason}`}>
+              {jurorNames[abstention.juror_id] ?? abstention.juror_id}: {abstention.reason}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div className="decision-metrics">
-        <Metric label="Calibrated jury odds" value={percent(item.strategy.jury_probability)} />
+        <Metric label="Prior-weighted jury odds" value={percent(item.strategy.jury_probability)} />
         <Metric label="Option hurdle" value={percent(item.strategy.market_hurdle)} />
         <Metric
           label="Probability edge"
@@ -934,7 +1141,11 @@ function DecisionDetail({
         <div className="record-box">
           <span className="eyebrow">Decision record</span>
           <h4>
-            {isApproved ? "Approved after deterministic resize" : "Trade vetoed — no order sent"}
+            {decision.status === "vetoed" || decision.verdict === "veto"
+              ? "Trade vetoed — no order sent"
+              : isApproved
+                ? "Decision passed deterministic review"
+                : "No order approval"}
           </h4>
           <p>{item.verdict.reasons[0]}</p>
           {isApproved && item.pnl_snapshots?.length ? (
@@ -948,7 +1159,7 @@ function DecisionDetail({
             </div>
           ) : !isApproved ? (
             <div className="blocked-note">
-              No approval artifact, Alpaca order, execution record, or P&amp;L follows this veto.
+              No paper approval or order has been recorded for this decision.
             </div>
           ) : null}
         </div>
@@ -959,14 +1170,19 @@ function DecisionDetail({
             className="button button-primary"
             type="button"
             onClick={onApprove}
-            disabled={busy || decision.status === "vetoed"}
+            disabled={busy || decision.status === "vetoed" || !canMutateDecision}
           >
-            Approve for paper order
+            {canMutateDecision ? "Prepare backend approval" : "Fixture is read-only"}
           </button>
         )}
         {!isApproved && (
-          <button className="button button-ghost" type="button" onClick={onVeto} disabled={busy}>
-            Confirm veto
+          <button
+            className="button button-ghost"
+            type="button"
+            onClick={onVeto}
+            disabled={busy || !canMutateDecision}
+          >
+            {canMutateDecision ? "Confirm veto" : "Fixture is read-only"}
           </button>
         )}
         {approval && (
@@ -981,7 +1197,7 @@ function DecisionDetail({
               className="button button-primary"
               type="button"
               onClick={onSubmit}
-              disabled={busy || mode === "recorded"}
+              disabled={busy || mode === "recorded" || !canMutateDecision}
             >
               {mode === "recorded" ? "Paper mode required" : "Confirm & submit"}
             </button>
@@ -996,15 +1212,112 @@ function DecisionDetail({
   );
 }
 
+function TypeSafeTrace({ forecast }: { forecast: RecordedCaseView["forecasts"][number] }) {
+  const metadata = forecast.provider_metadata;
+  const trace = metadata?.provider === "typesafe" ? metadata : metadata?.shadow_typesafe;
+  if (!trace) return <small className="trace-empty">Deterministic baseline</small>;
+
+  const answer = trace.typesafe_answers;
+  const anchor = answer?.evidence_anchor?.choice;
+  const choiceProbabilities = answer?.evidence_anchor?.probabilities;
+  const qualityProbabilities = answer?.evidence_quality?.probabilities;
+  return (
+    <div className="typesafe-trace">
+      <div className="trace-heading">
+        <span>{metadata?.provider === "typesafe" ? "TypeSafe telemetry" : "Shadow telemetry"}</span>
+        <small>{trace.status ?? "completed"}</small>
+      </div>
+      <div className="trace-grid">
+        <span>
+          Evidence quality <b>{percent(trace.evidence_quality)}</b>
+        </span>
+        <span>
+          Noul probability <b>{percent(trace.noul_probability)}</b>
+        </span>
+        <span>
+          Noul margin <b>{percent(trace.noul_margin)}</b>
+        </span>
+        <span>
+          Latency <b>{trace.latency_ms ? `${trace.latency_ms} ms` : "—"}</b>
+        </span>
+      </div>
+      <div className="trace-detail">
+        <span>
+          Anchor: <b>{anchor ?? "—"}</b>
+        </span>
+        {trace.model ? (
+          <span>
+            Model: <b>{trace.model}</b>
+          </span>
+        ) : null}
+        {trace.question_set_version ? (
+          <span>
+            Questions: <b>{trace.question_set_version}</b>
+          </span>
+        ) : null}
+      </div>
+      {choiceProbabilities ? (
+        <div className="trace-distribution">
+          <span>Anchor distribution</span>
+          <div>
+            {Object.entries(choiceProbabilities).map(([key, value]) => (
+              <span key={key}>
+                {key}: {percent(value)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {qualityProbabilities ? (
+        <div className="trace-distribution">
+          <span>Quality distribution</span>
+          <div>
+            {Object.entries(qualityProbabilities).map(([key, value]) => (
+              <span key={key}>
+                {key}: {percent(value)}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {trace.reason ? <span className="trace-reason">{trace.reason}</span> : null}
+    </div>
+  );
+}
+
 function PortfolioView({
   portfolio,
-  chartData,
-  decisions,
+  exitPreviews,
+  busy,
+  mode,
+  apiConnected,
+  onPreviewExit,
+  onConfirmExit,
 }: {
   portfolio: Portfolio;
-  chartData: Array<{ name: string; pnl: number }>;
-  decisions: PersonalDecision[];
+  exitPreviews: Record<string, ExitPreview | undefined>;
+  busy: boolean;
+  mode: "recorded" | "paper";
+  apiConnected: boolean;
+  onPreviewExit: (positionId: string) => void;
+  onConfirmExit: (positionId: string) => void;
 }) {
+  const openPositions = portfolio.positions.filter((item) => item.status === "open");
+  const closedPositions = portfolio.positions.filter((item) => item.status !== "open");
+  const pendingOrders = portfolio.orders.filter(
+    (item) =>
+      !["filled", "canceled", "cancelled", "expired", "rejected"].includes(
+        item.status.toLowerCase(),
+      ),
+  );
+  const realizedPnl = portfolio.positions.reduce(
+    (total, item) => total + Number(item.realized_pnl),
+    0,
+  );
+  const unrealizedPnl = openPositions.reduce(
+    (total, item) => total + Number(item.unrealized_pnl),
+    0,
+  );
   return (
     <div className="view-stack">
       <section className="metric-grid">
@@ -1016,50 +1329,132 @@ function PortfolioView({
         />
         <MetricCard
           label="Open positions"
-          value={String(portfolio.positions.length)}
-          detail="Live local records"
+          value={String(openPositions.length)}
+          detail="Open, reconciled records"
           tone="violet"
         />
         <MetricCard
           label="Pending orders"
-          value={String(portfolio.orders.filter((item) => item.status === "submitted").length)}
-          detail="Idempotency protected"
+          value={String(pendingOrders.length)}
+          detail="Non-terminal broker records"
           tone="amber"
         />
         <MetricCard
           label="Realized P&L"
-          value={money(
-            decisions.reduce(
-              (total, item) =>
-                total + Number(item.payload?.pnl_snapshots?.at(-1)?.realized_pnl ?? 0),
-              0,
-            ),
-          )}
-          detail="From stored decisions"
+          value={money(realizedPnl)}
+          detail="From reconciled position fills"
           tone="green"
+        />
+        <MetricCard
+          label="Unrealized P&L"
+          value={money(unrealizedPnl)}
+          detail="Latest stored marks"
+          tone="cyan"
         />
       </section>
       <section className="content-grid">
-        <div className="panel chart-panel">
-          <PanelHeader eyebrow="Portfolio curve" title="P&L over decisions" />
-          <div className="chart-wrap">
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={chartData}>
-                <CartesianGrid stroke="#ffffff12" vertical={false} />
-                <XAxis dataKey="name" stroke="#64748b" />
-                <YAxis stroke="#64748b" />
-                <Tooltip
-                  contentStyle={{
-                    background: "#111827",
-                    border: "1px solid #ffffff1c",
-                    borderRadius: 12,
-                  }}
-                  formatter={(value) => [money(String(value)), "P&L"]}
-                />
-                <Area type="monotone" dataKey="pnl" stroke="#a78bfa" fill="#a78bfa22" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+        <div className="panel">
+          <PanelHeader eyebrow="Broker positions" title="Open exposure" />
+          {openPositions.length ? (
+            openPositions.map((position) => {
+              const preview = exitPreviews[position.position_id];
+              return (
+                <article className="position-card" key={position.position_id}>
+                  <div className="order-row">
+                    <span>
+                      <strong>{position.symbol ?? "Option spread"}</strong>
+                      <small>
+                        {position.position_id} · {position.quantity} contract(s)
+                      </small>
+                    </span>
+                    <StatusBadge
+                      verdict={position.reconciliation_status}
+                      label={position.reconciliation_status}
+                    />
+                  </div>
+                  <div className="position-values">
+                    <span>
+                      Cost basis <b>{money(position.cost_basis)}</b>
+                    </span>
+                    <span>
+                      Current value <b>{money(position.position_value)}</b>
+                    </span>
+                    <span>
+                      Unrealized <b>{money(position.unrealized_pnl)}</b>
+                    </span>
+                    <span>
+                      Mark time{" "}
+                      <b>
+                        {position.mark_at
+                          ? new Date(position.mark_at).toLocaleString()
+                          : "Unavailable"}
+                      </b>
+                    </span>
+                  </div>
+                  {position.reconciliation_reason ? (
+                    <p className="muted-copy">{position.reconciliation_reason}</p>
+                  ) : null}
+                  {preview ? (
+                    <div className="exit-preview" role="status">
+                      <p>{preview.reason}</p>
+                      {preview.approval ? (
+                        <small>
+                          Prepared for {preview.approval.quantity} contract(s) · expires{" "}
+                          {shortTime(preview.approval.expires_at)}
+                        </small>
+                      ) : null}
+                      {preview.confirm_required ? (
+                        <button
+                          className="button button-danger"
+                          type="button"
+                          onClick={() => onConfirmExit(position.position_id)}
+                          disabled={busy || !apiConnected || mode !== "paper"}
+                        >
+                          Confirm paper exit
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <button
+                    className="button button-ghost"
+                    type="button"
+                    onClick={() => onPreviewExit(position.position_id)}
+                    disabled={busy || !apiConnected || mode !== "paper"}
+                  >
+                    Preview exit
+                  </button>
+                </article>
+              );
+            })
+          ) : (
+            <EmptyState
+              title="No open positions"
+              detail={
+                portfolio.reconciliation?.status === "recorded"
+                  ? "Recorded mode has no broker positions."
+                  : "Open positions appear after the broker reports fills and reconciliation matches their legs."
+              }
+            />
+          )}
+          {closedPositions.length ? (
+            <details className="closed-positions">
+              <summary>Closed positions ({closedPositions.length})</summary>
+              {closedPositions.map((position) => (
+                <div className="order-row" key={position.position_id}>
+                  <span>
+                    <strong>{position.symbol ?? "Option spread"}</strong>
+                    <small>
+                      {position.position_id} · realized {money(position.realized_pnl)}
+                    </small>
+                  </span>
+                  <StatusBadge verdict={position.status} label={position.status} />
+                </div>
+              ))}
+            </details>
+          ) : null}
+          {portfolio.reconciliation ? (
+            <p className="muted-copy">Broker reconciliation: {portfolio.reconciliation.status}</p>
+          ) : null}
         </div>
         <div className="panel">
           <PanelHeader eyebrow="Broker lifecycle" title="Orders" />
@@ -1068,7 +1463,10 @@ function PortfolioView({
               <div className="order-row" key={order.order_id}>
                 <span>
                   <strong>{order.safe_reference ?? "Paper order"}</strong>
-                  <small>{order.client_order_id}</small>
+                  <small>
+                    {order.client_order_id} · filled {order.filled_qty} @{" "}
+                    {order.filled_avg_price ? money(order.filled_avg_price) : "—"}
+                  </small>
                 </span>
                 <StatusBadge verdict={order.status} label={order.status} />
               </div>
@@ -1092,7 +1490,7 @@ function JournalView({
 }: {
   journal: JournalEntry[];
   selectedDecision?: PersonalDecision;
-  onAdd: (body: string) => Promise<void>;
+  onAdd: (body: string) => Promise<boolean>;
 }) {
   const [body, setBody] = useState("");
   return (
@@ -1114,10 +1512,11 @@ function JournalView({
           <button
             className="button button-primary"
             type="button"
-            onClick={() => {
-              void onAdd(body);
-              setBody("");
-            }}
+            onClick={() =>
+              void onAdd(body).then((saved) => {
+                if (saved) setBody("");
+              })
+            }
             disabled={!body.trim()}
           >
             Save note
@@ -1139,7 +1538,7 @@ function JournalView({
         ) : (
           <EmptyState
             title="Your journal is quiet"
-            detail="Notes stay local and can be linked to a decision for later review."
+            detail="Saved notes are linked to the backend when it confirms persistence."
           />
         )}
       </section>
@@ -1155,7 +1554,7 @@ function SettingsView({
 }: {
   watchlist: string[];
   onToggle: (symbol: string) => Promise<void>;
-  killSwitch: boolean;
+  killSwitch: boolean | null;
   onToggleKillSwitch: () => void;
 }) {
   return (
@@ -1189,8 +1588,10 @@ function SettingsView({
           eyebrow="Execution guardrail"
           title="Kill switch"
           action={
-            <span className={`state-label ${killSwitch ? "danger" : "safe"}`}>
-              {killSwitch ? "Enabled" : "Armed"}
+            <span
+              className={`state-label ${killSwitch === null ? "" : killSwitch ? "danger" : "safe"}`}
+            >
+              {killSwitch === null ? "Unknown" : killSwitch ? "Enabled" : "Armed"}
             </span>
           }
         />
@@ -1202,8 +1603,13 @@ function SettingsView({
           type="button"
           className={`button ${killSwitch ? "button-primary" : "button-danger"}`}
           onClick={onToggleKillSwitch}
+          disabled={killSwitch === null}
         >
-          {killSwitch ? "Resume new entries" : "Pause new entries"}
+          {killSwitch === null
+            ? "Kill switch unknown"
+            : killSwitch
+              ? "Resume new entries"
+              : "Pause new entries"}
         </button>
       </section>
       <section className="panel settings-panel">
@@ -1312,7 +1718,7 @@ function OddsComparison({ juryProbability, hurdle }: { juryProbability: string; 
     <div
       className="odds-comparison"
       role="img"
-      aria-label={`Calibrated jury odds ${percent(juryProbability)} versus option-implied hurdle ${percent(hurdle)}`}
+      aria-label={`Prior-weighted jury odds ${percent(juryProbability)} versus option-implied hurdle ${percent(hurdle)}`}
     >
       <div className="odds-labels">
         <span>

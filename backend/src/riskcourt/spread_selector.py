@@ -41,7 +41,7 @@ def select_vertical_spreads(
     maximum_quote_age: timedelta = timedelta(seconds=30),
     maximum_relative_spread: Decimal = Decimal("0.20"),
 ) -> tuple[SpreadCandidate, ...]:
-    """Return candidates ordered by expiry, width, right, and strikes."""
+    """Return fresh, eligible candidates ranked by quote quality and risk geometry."""
 
     if as_of.tzinfo is None or as_of.utcoffset() is None:
         raise ValueError("as_of must be timezone-aware")
@@ -69,15 +69,7 @@ def select_vertical_spreads(
             except ValueError:
                 continue
             candidates.append(SpreadCandidate(geometry, long_contract, short_contract))
-    candidates.sort(
-        key=lambda candidate: (
-            candidate.long_contract.expiry,
-            candidate.geometry.spread_width,
-            candidate.geometry.right.value,
-            candidate.long_contract.strike,
-            candidate.short_contract.strike,
-        )
-    )
+    candidates.sort(key=lambda candidate: _candidate_rank_key(candidate, as_of))
     return tuple(candidates)
 
 
@@ -99,8 +91,12 @@ def _liquid(
     verdict = assess_contract_liquidity(
         ContractSnapshot(
             quote=quote,
-            status=ContractStatus.ACTIVE,
-            tradable=True,
+            status=(
+                ContractStatus.ACTIVE
+                if contract.active is True
+                else ContractStatus.INACTIVE
+            ),
+            tradable=contract.tradable is True,
             delta=contract.delta,
         ),
         as_of,
@@ -108,6 +104,30 @@ def _liquid(
         maximum_relative_spread=maximum_relative_spread,
     )
     return verdict.passed
+
+
+def _candidate_rank_key(
+    candidate: SpreadCandidate,
+    as_of: datetime,
+) -> tuple[Decimal, Decimal, str, Decimal, str, Decimal, Decimal]:
+    contracts = (candidate.long_contract, candidate.short_contract)
+    relative_spread = Decimal("0")
+    quote_age = Decimal("0")
+    for contract in contracts:
+        assert contract.bid is not None and contract.ask is not None
+        midpoint = (contract.bid + contract.ask) / Decimal("2")
+        relative_spread += (contract.ask - contract.bid) / midpoint
+        assert contract.quoted_at is not None
+        quote_age += Decimal(str(max(0.0, (as_of - contract.quoted_at).total_seconds())))
+    return (
+        relative_spread,
+        quote_age,
+        candidate.long_contract.expiry.isoformat(),
+        candidate.geometry.spread_width,
+        candidate.geometry.right.value,
+        candidate.long_contract.strike,
+        candidate.short_contract.strike,
+    )
 
 
 def _valid_pair(

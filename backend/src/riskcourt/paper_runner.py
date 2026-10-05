@@ -13,9 +13,28 @@ from types import ModuleType
 from typing import Any, cast
 
 from riskcourt.alpaca_account import PaperAccountState
-from riskcourt.model_provider import ProviderClient
+from riskcourt.jurors import DeterministicJurorStub, JurorOutput
+from riskcourt.model_provider import (
+    ProviderBoundary,
+    ProviderClient,
+    ProviderReply,
+    ProviderRequest,
+    ProviderUnavailable,
+)
 from riskcourt.paper_loop import PaperCycleResult
-from riskcourt.risk_limits import PortfolioRiskSnapshot, RiskStateStore
+from riskcourt.risk_limits import (
+    PortfolioRiskExposure,
+    PortfolioRiskSnapshot,
+    RiskStateStore,
+)
+from riskcourt.settings import AiMode, Settings
+from riskcourt.typesafe_provider import (
+    BoundedProviderClient,
+    ShadowProviderClient,
+    TypeSafeProviderClient,
+    TypeSafeProviderConfig,
+    create_typesafe_sdk_client,
+)
 
 
 def load_provider_client(spec: str | None) -> ProviderClient:
@@ -42,35 +61,107 @@ def load_provider_client(spec: str | None) -> ProviderClient:
     return cast(ProviderClient, candidate)
 
 
-def build_risk_state(account: PaperAccountState, *, daily_pnl: Decimal) -> RiskStateStore:
+def load_configured_provider(settings: Settings, spec: str | None = None) -> ProviderClient:
+    """Build the explicitly selected provider without changing policy ownership."""
+
+    primary = load_provider_client(spec) if spec else DeterministicJurorStub()
+    if settings.riskcourt_ai_mode is AiMode.DETERMINISTIC:
+        return primary
+    if not settings.typesafe_credentials_configured:
+        if settings.riskcourt_ai_mode is AiMode.SHADOW:
+            return ShadowProviderClient(primary, _UnavailableTypeSafeProvider())
+        raise ProviderUnavailable("typesafe api key is missing")
+    api_key = settings.typesafe_api_key
+    if api_key is None:  # pragma: no cover - guarded by typesafe_credentials_configured
+        raise ProviderUnavailable("typesafe api key is missing")
+    sdk_client = create_typesafe_sdk_client(
+        api_key=api_key.get_secret_value(),
+        model=settings.typesafe_model,
+        timeout_seconds=settings.typesafe_timeout_seconds,
+    )
+    typesafe = TypeSafeProviderClient(
+        sdk_client,
+        config=TypeSafeProviderConfig(
+            model=settings.typesafe_model,
+            min_evidence_quality=settings.typesafe_min_evidence_quality,
+        ),
+    )
+    if settings.riskcourt_ai_mode is AiMode.SHADOW:
+        shadow_boundary = ProviderBoundary(
+            typesafe,
+            timeout_seconds=settings.typesafe_timeout_seconds,
+            max_calls=settings.typesafe_max_calls,
+            max_cost_units=settings.typesafe_max_cost_units,
+            total_timeout_seconds=settings.typesafe_total_timeout_seconds,
+        )
+        return ShadowProviderClient(
+            primary,
+            BoundedProviderClient(typesafe, shadow_boundary, JurorOutput),
+        )
+    return typesafe
+
+
+class _UnavailableTypeSafeProvider:
+    """Shadow-mode placeholder used when recorded runs have no provider key."""
+
+    def complete(self, _: ProviderRequest) -> ProviderReply:
+        raise ProviderUnavailable("typesafe api key is missing")
+
+
+def build_risk_state(
+    account: PaperAccountState,
+    *,
+    exposure: PortfolioRiskExposure | None = None,
+    last_equity_baseline: Decimal | None = None,
+    broker_positions_reconciled: bool = False,
+) -> RiskStateStore:
     """Build a conservative portfolio snapshot from one account read.
 
-    Existing option positions cannot be safely valued from the minimal account
-    contract alone, so the runner refuses to submit when any are present.  This
-    is safer than silently assuming zero risk after a restart.
+    Existing option positions require reconciled persisted spread exposure.
+    Unknown broker positions, stale account baselines, or mismatched local
+    spread records fail closed instead of being counted as zero risk.
     """
 
     equity = account.account.equity
     if equity is None or equity <= 0:
         raise ValueError("account equity is unavailable for risk state")
+    last_equity = account.account.last_equity or last_equity_baseline
+    if last_equity is None or last_equity <= 0:
+        raise ValueError("daily P&L is unavailable for risk state")
     option_positions = tuple(
         position
         for position in account.positions
         if "option" in position.asset_class.lower()
     )
-    if option_positions:
+    if option_positions and (
+        exposure is None
+        or not broker_positions_reconciled
+        or exposure.open_option_positions <= 0
+    ):
         raise ValueError("existing option risk cannot be reconstructed safely")
-    pending_option_orders = sum(
+    if (
+        exposure is not None
+        and exposure.open_option_positions > 0
+        and not broker_positions_reconciled
+    ):
+        raise ValueError("persisted option risk has not been reconciled to the broker")
+    broker_pending_orders = sum(
         1 for order in account.pending_orders if order.order_class.lower() in {"mleg", "option"}
+    )
+    open_risk = Decimal("0") if exposure is None else exposure.open_options_risk
+    open_positions = 0 if exposure is None else exposure.open_option_positions
+    pending_option_orders = max(
+        broker_pending_orders,
+        0 if exposure is None else exposure.pending_option_orders,
     )
     return RiskStateStore(
         PortfolioRiskSnapshot(
             account_equity=equity,
-            open_options_risk=Decimal("0"),
-            open_option_positions=0,
+            open_options_risk=open_risk,
+            open_option_positions=open_positions,
             pending_option_orders=pending_option_orders,
-            daily_pnl=daily_pnl,
-            kill_switch_enabled=False,
+            daily_pnl=equity - last_equity,
+            kill_switch_enabled=False if exposure is None else exposure.kill_switch_enabled,
             revision=0,
         )
     )

@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
+from datetime import date as date_type
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Protocol, cast
+from zoneinfo import ZoneInfo
 
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import QueryOrderStatus
-from alpaca.trading.requests import GetOrdersRequest
+from alpaca.trading.requests import GetCalendarRequest, GetOrdersRequest
 from pydantic import AwareDatetime, Field
 
 from riskcourt.domain import ContractModel
@@ -23,6 +25,7 @@ class AccountSnapshot(ContractModel):
     status: str
     equity: Decimal | None
     options_buying_power: Decimal | None
+    last_equity: Decimal | None = None
     options_approved_level: int | None = Field(default=None, ge=0, le=3)
     options_trading_level: int | None = Field(default=None, ge=0, le=3)
     trading_blocked: bool
@@ -70,6 +73,9 @@ class PaperAccountState(ContractModel):
             "paper": True,
             "account_status": self.account.status,
             "equity_present": self.account.equity is not None,
+            "daily_pnl_known": (
+                self.account.equity is not None and self.account.last_equity is not None
+            ),
             "options_buying_power_present": self.account.options_buying_power is not None,
             "options_approved_level": self.account.options_approved_level,
             "options_trading_level": self.account.options_trading_level,
@@ -89,6 +95,12 @@ class TradingReadClient(Protocol):
     def get_all_positions(self) -> Any: ...
 
     def get_orders(self, filter: GetOrdersRequest | None = None) -> Any: ...
+
+    def get_calendar(self, filters: GetCalendarRequest | None = None) -> Any: ...
+
+
+class PaperCalendarUnavailable(RuntimeError):
+    """The broker calendar could not provide an expiry-session close."""
 
 
 class AlpacaAccountAdapter:
@@ -128,6 +140,7 @@ class AlpacaAccountAdapter:
                 observed_at=_aware_datetime(clock, "timestamp"),
                 status=_text(account, "status"),
                 equity=_optional_decimal(account, "equity"),
+                last_equity=_optional_decimal(account, "last_equity"),
                 options_buying_power=_optional_decimal(account, "options_buying_power"),
                 options_approved_level=getattr(account, "options_approved_level", None),
                 options_trading_level=getattr(account, "options_trading_level", None),
@@ -165,6 +178,26 @@ class AlpacaAccountAdapter:
                 for order in orders
             ),
         )
+
+    def market_close(self, on_date: date_type) -> datetime:
+        """Return the broker calendar's official close, including early closes."""
+
+        try:
+            sessions = self._client.get_calendar(
+                filters=GetCalendarRequest(start=on_date, end=on_date)
+            )
+        except Exception as error:
+            raise PaperCalendarUnavailable("paper market calendar unavailable") from error
+        if not isinstance(sessions, list) or len(sessions) != 1:
+            raise PaperCalendarUnavailable("expiry is not a supported trading session")
+        session = sessions[0]
+        session_date = getattr(session, "date", None)
+        close = getattr(session, "close", None)
+        if session_date != on_date or not isinstance(close, datetime):
+            raise PaperCalendarUnavailable("broker calendar returned an invalid expiry session")
+        if close.tzinfo is None or close.utcoffset() is None:
+            close = close.replace(tzinfo=ZoneInfo("America/New_York"))
+        return close.astimezone(UTC)
 
 
 def _text(source: object, field: str) -> str:

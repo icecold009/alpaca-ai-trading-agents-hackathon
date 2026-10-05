@@ -4,7 +4,20 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  cacheDir: process.env.RISKCOURT_VITE_CACHE_DIR ?? "node_modules/.vite",
   server: {
+    host: "127.0.0.1",
+    port: 5206,
+    strictPort: true,
+    proxy: {
+      "/api": "http://127.0.0.1:8000",
+      "/healthz": "http://127.0.0.1:8000",
+    },
+  },
+  preview: {
+    host: "127.0.0.1",
+    port: 5206,
+    strictPort: true,
     proxy: {
       "/api": "http://127.0.0.1:8000",
       "/healthz": "http://127.0.0.1:8000",

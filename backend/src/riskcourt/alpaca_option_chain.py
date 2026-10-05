@@ -10,6 +10,9 @@ from alpaca.common.exceptions import APIError
 from alpaca.data.enums import OptionsFeed
 from alpaca.data.historical.option import OptionHistoricalDataClient
 from alpaca.data.requests import OptionChainRequest
+from alpaca.trading.client import TradingClient
+from alpaca.trading.enums import AssetStatus
+from alpaca.trading.requests import GetOptionContractsRequest
 from pydantic import AwareDatetime
 
 from riskcourt.domain import OCC_PATTERN, ContractModel, OccSymbol, OptionRight, Ticker
@@ -36,6 +39,8 @@ class ChainContract(ContractModel):
     theta: Decimal | None
     vega: Decimal | None
     missing_values: tuple[str, ...]
+    active: bool | None = None
+    tradable: bool | None = None
 
 
 class OptionChainState(ContractModel):
@@ -50,6 +55,9 @@ class OptionChainState(ContractModel):
     def sanitized_summary(self) -> dict[str, object]:
         missing_quotes = sum("quote" in item.missing_values for item in self.contracts)
         missing_greeks = sum("greeks" in item.missing_values for item in self.contracts)
+        missing_eligibility = sum(
+            "contract_eligibility" in item.missing_values for item in self.contracts
+        )
         return {
             "underlying_symbol": self.underlying_symbol,
             "feed": self.feed,
@@ -60,6 +68,7 @@ class OptionChainState(ContractModel):
             "contract_count": len(self.contracts),
             "missing_quote_count": missing_quotes,
             "missing_greeks_count": missing_greeks,
+            "missing_eligibility_count": missing_eligibility,
         }
 
 
@@ -67,12 +76,20 @@ class OptionReadClient(Protocol):
     def get_option_chain(self, request_params: OptionChainRequest) -> Any: ...
 
 
+class OptionContractReadClient(Protocol):
+    def get_option_contracts(self, request: GetOptionContractsRequest) -> Any: ...
+
+
 class AlpacaOptionChainAdapter:
     def __init__(
-        self, client: OptionReadClient, feed: OptionsFeed = OptionsFeed.INDICATIVE
+        self,
+        client: OptionReadClient,
+        feed: OptionsFeed = OptionsFeed.INDICATIVE,
+        contract_client: OptionContractReadClient | None = None,
     ) -> None:
         self._client = client
         self._feed = feed
+        self._contract_client = contract_client
 
     @classmethod
     def from_settings(cls, settings: Settings) -> AlpacaOptionChainAdapter:
@@ -84,7 +101,17 @@ class AlpacaOptionChainAdapter:
             api_key=settings.alpaca_api_key_id.get_secret_value(),
             secret_key=settings.alpaca_api_secret_key.get_secret_value(),
         )
-        return cls(cast(OptionReadClient, client))
+        contract_client = TradingClient(
+            api_key=settings.alpaca_api_key_id.get_secret_value(),
+            secret_key=settings.alpaca_api_secret_key.get_secret_value(),
+            paper=True,
+            url_override=str(settings.alpaca_paper_base_url).rstrip("/"),
+        )
+        return cls(
+            cast(OptionReadClient, client),
+            feed=OptionsFeed(settings.riskcourt_option_feed),
+            contract_client=cast(OptionContractReadClient, contract_client),
+        )
 
     def fetch(
         self,
@@ -118,10 +145,24 @@ class AlpacaOptionChainAdapter:
         if not isinstance(response, dict) or not response:
             raise OptionChainUnavailable(f"option chain empty for {underlying_symbol}")
 
+        metadata = self._fetch_contract_metadata(
+            underlying_symbol,
+            expiration_from=expiration_from,
+            expiration_to=expiration_to,
+            strike_from=strike_from,
+            strike_to=strike_to,
+        )
+
         contracts = tuple(
             sorted(
                 (
-                    _translate(symbol, snapshot, underlying_symbol, self._feed)
+                    _translate(
+                        symbol,
+                        snapshot,
+                        underlying_symbol,
+                        self._feed,
+                        metadata.get(symbol),
+                    )
                     for symbol, snapshot in response.items()
                 ),
                 key=lambda item: (item.expiry, item.strike, item.right.value, item.occ_symbol),
@@ -137,8 +178,65 @@ class AlpacaOptionChainAdapter:
             contracts=contracts,
         )
 
+    def _fetch_contract_metadata(
+        self,
+        underlying_symbol: str,
+        *,
+        expiration_from: date,
+        expiration_to: date,
+        strike_from: Decimal,
+        strike_to: Decimal,
+    ) -> dict[str, tuple[bool, bool | None]]:
+        if self._contract_client is None:
+            return {}
+        result: dict[str, tuple[bool, bool | None]] = {}
+        page_token: str | None = None
+        page_count = 0
+        while True:
+            try:
+                response = self._contract_client.get_option_contracts(
+                    GetOptionContractsRequest(
+                        underlying_symbols=[underlying_symbol],
+                        status=AssetStatus.ACTIVE,
+                        expiration_date_gte=expiration_from,
+                        expiration_date_lte=expiration_to,
+                        strike_price_gte=str(strike_from),
+                        strike_price_lte=str(strike_to),
+                        limit=10_000,
+                        page_token=page_token,
+                    )
+                )
+            except Exception as error:
+                raise OptionChainUnavailable("option contract eligibility unavailable") from error
+            contracts = getattr(response, "option_contracts", None)
+            if not isinstance(contracts, list):
+                raise OptionChainUnavailable("option contract metadata response is invalid")
+            for contract in contracts:
+                symbol = getattr(contract, "symbol", None)
+                if not isinstance(symbol, str):
+                    raise OptionChainUnavailable("option contract metadata omitted a symbol")
+                status_value = getattr(contract, "status", None)
+                status_text = str(getattr(status_value, "value", status_value)).lower()
+                tradable_value = getattr(contract, "tradable", None)
+                tradable = tradable_value if isinstance(tradable_value, bool) else None
+                result[symbol] = (status_text == AssetStatus.ACTIVE.value, tradable)
+            page_token = getattr(response, "next_page_token", None)
+            page_count += 1
+            if not page_token:
+                return result
+            if not isinstance(page_token, str) or page_count >= 5:
+                raise OptionChainUnavailable(
+                    "option contract metadata exceeded the bounded page limit"
+                )
 
-def _translate(symbol: str, snapshot: object, underlying: str, feed: OptionsFeed) -> ChainContract:
+
+def _translate(
+    symbol: str,
+    snapshot: object,
+    underlying: str,
+    feed: OptionsFeed,
+    eligibility: tuple[bool, bool | None] | None = None,
+) -> ChainContract:
     match = OCC_PATTERN.fullmatch(symbol)
     if match is None or match.group("root") != underlying:
         raise OptionChainUnavailable(f"invalid option symbol returned for {underlying}")
@@ -152,6 +250,9 @@ def _translate(symbol: str, snapshot: object, underlying: str, feed: OptionsFeed
         missing.append("implied_volatility")
     if greeks is None:
         missing.append("greeks")
+    active, tradable = eligibility if eligibility is not None else (None, None)
+    if active is None or tradable is None:
+        missing.append("contract_eligibility")
     return ChainContract(
         occ_symbol=symbol,
         underlying_symbol=underlying,
@@ -168,6 +269,8 @@ def _translate(symbol: str, snapshot: object, underlying: str, feed: OptionsFeed
         theta=_optional_decimal(greeks, "theta"),
         vega=_optional_decimal(greeks, "vega"),
         missing_values=tuple(missing),
+        active=active,
+        tradable=tradable,
     )
 
 

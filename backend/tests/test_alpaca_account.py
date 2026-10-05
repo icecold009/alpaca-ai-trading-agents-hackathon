@@ -1,6 +1,7 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from types import SimpleNamespace
+from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import SecretStr
@@ -23,6 +24,7 @@ class FakeClient:
         self.account = SimpleNamespace(
             status=Value.ACTIVE,
             equity="100000.00",
+            last_equity="99500.00",
             options_buying_power="50000.00",
             options_approved_level=3,
             options_trading_level=3,
@@ -56,6 +58,7 @@ class FakeClient:
             )
         ]
         self.order_filter: object | None = None
+        self.calendar_sessions: list[object] = []
 
     def get_account(self) -> object:
         return self.account
@@ -70,18 +73,39 @@ class FakeClient:
         self.order_filter = filter
         return self.orders
 
+    def get_calendar(self, filters: object = None) -> list[object]:
+        return self.calendar_sessions
+
 
 def test_adapter_translates_account_clock_positions_and_open_orders() -> None:
     client = FakeClient()
     state = AlpacaAccountAdapter(client).fetch()
 
     assert state.account.equity == 100000
+    assert state.account.last_equity == 99500
     assert state.account.options_buying_power == 50000
     assert state.account.options_trading_level == 3
     assert state.clock.is_open is False
     assert state.positions[0].symbol == "SPY260918C00650000"
     assert state.pending_orders[0].client_order_id == "riskcourt-case-001"
     assert client.order_filter is not None
+
+
+def test_market_close_uses_broker_calendar_early_close_and_dst() -> None:
+    client = FakeClient()
+    session_date = date(2026, 11, 27)
+    client.calendar_sessions = [
+        SimpleNamespace(
+            date=session_date,
+            open=datetime(2026, 11, 27, 9, 30),
+            close=datetime(2026, 11, 27, 13, 0, tzinfo=ZoneInfo("America/New_York")),
+        )
+    ]
+
+    close = AlpacaAccountAdapter(client).market_close(session_date)
+
+    assert close == datetime(2026, 11, 27, 18, 0, tzinfo=UTC)
+    assert close.utcoffset() == timedelta(0)
 
 
 def test_sanitized_summary_omits_balances_order_references_and_symbols() -> None:

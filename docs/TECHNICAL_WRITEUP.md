@@ -2,9 +2,31 @@
 
 ## Product and AI logic
 
-RiskCourt is an autonomous, paper-only options agent built around an AI prediction market. Three independent jurors inspect different evidence classes: market structure, catalyst/news, and volatility/options structure. Each juror returns a structured probability forecast, a confidence stake, uncertainty, invalidation conditions, and the IDs of evidence it actually used. Juror prose is untrusted context; it never has order authority.
+RiskCourt is a local, single-user, paper-only options workstation. Its bounded juror roles inspect supported evidence classes such as market structure, catalysts, and volatility/options structure; an unsupported or missing role abstains. Forecasts include a confidence stake, invalidation conditions, and the IDs of evidence actually used. Juror prose is untrusted context; it never has order authority.
 
-The provider boundary enforces a schema, timeout, one repair attempt, call cap, cost cap, and model/prompt version trace. A provider failure, malformed response, missing evidence, or prompt-injection attempt ends in abstention or an explicit error. The deterministic orchestrator aggregates only valid forecasts. For juror `i`, calibration shrinks a probability toward 50%: `p_i' = 0.5 + c_i(p_i − 0.5)`. The aggregate weights each calibrated probability by `w_i = c_i × stake_i`: `P_jury = Σ(w_i p_i') / Σw_i`.
+The provider boundary enforces a schema, per-call and total time limits, call and cost caps, and model/prompt version trace. A provider failure, malformed response, missing evidence, or prompt-injection attempt ends in abstention or an explicit error. The deterministic orchestrator aggregates only valid forecasts. Forecast shrinkage uses the versioned fixed code-owned prior `configured_shrinkage_prior_v1`, `c_i = 0.80`: `p_i' = 0.5 + c_i(p_i − 0.5)`. This is a configured prior, not measured historical accuracy. Eligible forecasts and their event contracts are persisted; later settlement evidence can be imported and scored by role, model and prompt. Those metrics are descriptive and never change runtime weights. The aggregate weights each shrunk probability by `w_i = c_i × stake_i`: `P_jury = Σ(w_i p_i') / Σw_i`.
+
+Settlement imports preserve the exact UTF-8 CSV bytes and SHA-256 digest in SQLite.
+The event threshold and condition come from the saved forecast contract, not the
+import file. An import is rejected before the event horizon, for an observation
+after the horizon or more than five minutes before it, or when the observation
+does not follow every forecast. The report uses a chronological holdout and only
+places a training outcome in the training set when it was resolved before the
+first holdout forecast was produced. This enforces temporal ordering in the
+stored dataset; it does not independently authenticate an operator-supplied
+source label or establish trading profitability.
+
+The optional TypeSafe adapter asks three atomic System One questions in one bounded request:
+Noul for the outcome probability, Choice for one supplied evidence anchor (including an explicit
+no-supported-evidence option), and Score for evidence quality. TypeSafe confidence and evidence
+quality contribute only to a bounded confidence stake; calibration remains code-owned. The adapter
+receives role-specific evidence partitions, hashes the sanitized state, records model, question-set,
+usage, latency, and validation metadata, and fails closed on stale evidence, unknown IDs,
+malformed answers, missing credentials, or provider errors. RISKCOURT_AI_MODE=shadow keeps the
+deterministic result while recording a comparison; typesafe is active only when explicitly selected.
+Earlier repository notes recorded a provider smoke request and a read-only broker preflight. Those
+historical checks are not evidence of this branch's current hosted or account state. Current local
+tests use injected broker/provider fakes; no broker order was submitted for this completion work.
 
 ## Option-implied hurdle and entry
 

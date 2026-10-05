@@ -26,6 +26,9 @@ describe("RiskCourt personal workstation", () => {
       screen.getByRole("heading", { level: 2, name: "Find the next defensible setup." }),
     ).toBeInTheDocument();
     expect(screen.getByText("Jury odds vs. market hurdle")).toBeInTheDocument();
+    expect(
+      screen.getByText("TypeSafe explains; deterministic RiskCourt decides."),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Market closed" }));
     expect(screen.getByText("Market closed — no order sent")).toBeInTheDocument();
@@ -34,26 +37,22 @@ describe("RiskCourt personal workstation", () => {
     expect(screen.getByText("Provider unavailable — abstain")).toBeInTheDocument();
   });
 
-  it("prepares an explicit approval and keeps recorded submission blocked", async () => {
+  it("keeps fixture approvals read-only until a backend decision exists", async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: /Opportunities/ }));
-    await user.click(screen.getByRole("button", { name: "Approve for paper order" }));
-    expect(screen.getByText(/Approval ready · 1 contract/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Paper mode required" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Fixture is read-only" })).toBeDisabled();
+    expect(screen.queryByText(/Approval ready/i)).not.toBeInTheDocument();
   });
 
-  it("keeps vetoes and journal notes local when the API is unavailable", async () => {
+  it("keeps fixture veto read-only and retains journal text when the API is unavailable", async () => {
     const user = userEvent.setup();
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: /Opportunities/ }));
     await user.click(screen.getByRole("button", { name: /SPY jury cannot clear/i }));
-    await user.click(screen.getByRole("button", { name: "Confirm veto" }));
-    expect(
-      screen.getByText("Decision vetoed. No order can follow this record."),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fixture is read-only" })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Journal" }));
     await user.type(
@@ -61,16 +60,17 @@ describe("RiskCourt personal workstation", () => {
       "Keep the edge threshold conservative.",
     );
     await user.click(screen.getByRole("button", { name: "Save note" }));
-    expect(await screen.findByText("Keep the edge threshold conservative.")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Capture the thesis/i)).toHaveValue(
+      "Keep the edge threshold conservative.",
+    );
+    expect(await screen.findByText(/not saved/i)).toBeInTheDocument();
   });
 
-  it("toggles the local kill switch from settings", async () => {
-    const user = userEvent.setup();
+  it("shows an unknown kill switch when no backend state is available", async () => {
     render(<App />);
 
-    await user.click(screen.getByRole("button", { name: "Settings" }));
-    await user.click(screen.getByRole("button", { name: "Pause new entries" }));
-    expect(screen.getByText("Enabled")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Resume new entries" })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByText("Unknown")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Kill switch unknown" })).toBeDisabled();
   });
 });

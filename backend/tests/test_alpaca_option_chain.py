@@ -18,6 +18,15 @@ class FakeClient:
     def get_option_chain(self, request_params: object) -> dict[str, object]:
         return self.response
 
+    def get_option_contracts(self, request: object) -> object:
+        return SimpleNamespace(
+            option_contracts=[
+                SimpleNamespace(symbol=symbol, status="active", tradable=True)
+                for symbol in self.response
+            ],
+            next_page_token=None,
+        )
+
 
 def snapshot(*, quote: bool = True, greeks: bool = True) -> object:
     return SimpleNamespace(
@@ -40,7 +49,7 @@ def snapshot(*, quote: bool = True, greeks: bool = True) -> object:
 
 
 def fetch(client: FakeClient) -> OptionChainState:
-    return AlpacaOptionChainAdapter(client).fetch(
+    return AlpacaOptionChainAdapter(client, contract_client=client).fetch(
         "SPY",
         expiration_from=date(2026, 9, 4),
         expiration_to=date(2026, 9, 18),
@@ -64,6 +73,8 @@ def test_chain_is_deterministic_and_parses_calls_and_puts() -> None:
     ]
     assert state.contracts[1].strike == Decimal("640")
     assert state.contracts[1].right.value == "put"
+    assert state.contracts[1].active is True
+    assert state.contracts[1].tradable is True
 
 
 def test_missing_quote_iv_and_greeks_are_explained() -> None:

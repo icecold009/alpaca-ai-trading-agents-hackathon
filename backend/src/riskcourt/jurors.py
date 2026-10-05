@@ -15,6 +15,8 @@ from riskcourt.model_provider import (
     ProviderRequest,
     ProviderUnavailable,
 )
+from riskcourt.strategy_math import CALIBRATION_PRIOR_VERSION, DEFAULT_CALIBRATION_SCORE
+from riskcourt.typesafe_state import TypeSafeState
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,7 +34,7 @@ JUROR_SPECS = (
 
 class JurorOutput(ContractModel):
     probability: Decimal = Field(ge=0, le=1)
-    calibration_score: Decimal = Field(ge=0, le=1)
+    calibration_score: Decimal = Field(default=Decimal("0.80"), ge=0, le=1)
     confidence_stake: Decimal = Field(ge=0, le=1)
     evidence_ids: EvidenceIds
     rationale: str = Field(min_length=1, max_length=2000)
@@ -48,8 +50,9 @@ def run_juror(
     produced_at: datetime,
     horizon_at: datetime,
     available_evidence_ids: tuple[str, ...],
+    state: TypeSafeState | None = None,
     model_version: str = "stub-v1",
-    prompt_version: str = "jury-v1",
+    prompt_version: str = "jury-v2",
 ) -> ProbabilityForecast:
     request = ProviderRequest(
         request_id=f"request_{spec.juror_id}",
@@ -61,27 +64,33 @@ def run_juror(
             "case_id": case_id,
             "outcome": outcome.value,
             "available_evidence_ids": list(available_evidence_ids),
+            **({"typesafe_state": state.model_dump(mode="json")} if state is not None else {}),
         },
     )
     result = boundary.call(request, JurorOutput)
     output = result.data
     if not set(output.evidence_ids).issubset(available_evidence_ids):
         raise ProviderUnavailable("juror cited evidence outside the supplied boundary")
+    provider_metadata = dict(result.trace.metadata)
+    provider_metadata["attempts"] = result.trace.attempts
+    provider_metadata["cost_units"] = str(result.trace.cost_units)
+    provider_metadata["calibration_basis"] = CALIBRATION_PRIOR_VERSION
     return ProbabilityForecast(
         forecast_id=f"forecast_{spec.juror_id.removeprefix('juror_')}",
         case_id=case_id,
         juror_id=spec.juror_id,
         outcome=outcome,
         probability=output.probability,
-        calibration_score=output.calibration_score,
+        calibration_score=DEFAULT_CALIBRATION_SCORE,
         confidence_stake=output.confidence_stake,
         produced_at=produced_at,
         horizon_at=horizon_at,
         evidence_ids=output.evidence_ids,
         rationale=output.rationale,
         invalidation=output.invalidation,
-        model_version=model_version,
+        model_version=str(provider_metadata.get("model", model_version)),
         prompt_version=prompt_version,
+        provider_metadata=provider_metadata,
     )
 
 
@@ -98,7 +107,7 @@ class DeterministicJurorStub:
         return ProviderReply(
             output={
                 "probability": probabilities[juror_id],
-                "calibration_score": "0.80",
+                "calibration_score": str(DEFAULT_CALIBRATION_SCORE),
                 "confidence_stake": "0.70",
                 "evidence_ids": request.payload["available_evidence_ids"],
                 "rationale": f"Deterministic {juror_id} stub rationale",
