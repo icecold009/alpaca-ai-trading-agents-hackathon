@@ -8,10 +8,14 @@ describe("optional hosted runtime", () => {
     expect(await loadRecordedCases(vi.fn(), null)).toBeNull();
   });
 
-  it("normalizes only absolute HTTP API origins", () => {
+  it("normalizes secure and loopback API origins only", () => {
     expect(runtimeApiBaseUrl(" https://api.example/// ")).toBe("https://api.example");
     expect(runtimeApiBaseUrl("api.example")).toBeNull();
     expect(runtimeApiBaseUrl("ftp://api.example")).toBeNull();
+    expect(runtimeApiBaseUrl("http://localhost:8000/ ")).toBe("http://localhost:8000");
+    expect(runtimeApiBaseUrl("http://api.example")).toBeNull();
+    expect(runtimeApiBaseUrl("https://user:pass@api.example")).toBeNull();
+    expect(runtimeApiBaseUrl("https://api.example/api")).toBeNull();
   });
 
   it("loads validated case payloads from the API when available", async () => {

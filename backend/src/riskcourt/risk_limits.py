@@ -17,6 +17,16 @@ class PortfolioRiskSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class PortfolioRiskExposure:
+    """Reconciled persisted option exposure used to seed a fresh risk snapshot."""
+
+    open_options_risk: Decimal
+    open_option_positions: int
+    pending_option_orders: int
+    kill_switch_enabled: bool
+
+
+@dataclass(frozen=True, slots=True)
 class PortfolioLimits:
     maximum_open_risk_fraction: Decimal = Decimal("0.02")
     maximum_option_positions: int = 3

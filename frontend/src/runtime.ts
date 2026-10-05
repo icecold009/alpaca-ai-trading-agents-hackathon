@@ -10,6 +10,17 @@ export function runtimeApiBaseUrl(
   try {
     const parsed = new URL(trimmed);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+    if (
+      parsed.username ||
+      parsed.password ||
+      parsed.search ||
+      parsed.hash ||
+      parsed.pathname.replace(/\/+$/, "") !== ""
+    ) {
+      return null;
+    }
+    const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname.toLowerCase());
+    if (parsed.protocol === "http:" && !loopback) return null;
     return parsed.toString().replace(/\/+$/, "");
   } catch {
     return null;
@@ -22,8 +33,18 @@ export async function loadRecordedCases(
 ): Promise<RecordedCaseView[] | null> {
   if (!baseUrl) return null;
 
+  const boundedFetch: typeof fetch = async (input, init) => {
+    const controller = new AbortController();
+    const timeout = globalThis.setTimeout(() => controller.abort(), 10_000);
+    try {
+      return await fetcher(input, { ...init, signal: controller.signal });
+    } finally {
+      globalThis.clearTimeout(timeout);
+    }
+  };
+
   try {
-    const summariesResponse = await fetcher(`${baseUrl}/api/recorded-cases`, {
+    const summariesResponse = await boundedFetch(`${baseUrl}/api/recorded-cases`, {
       headers: { Accept: "application/json" },
     });
     if (!summariesResponse.ok) return null;
@@ -41,7 +62,7 @@ export async function loadRecordedCases(
     const caseIds = rawCaseIds as string[];
     const responses = await Promise.all(
       caseIds.map((caseId) =>
-        fetcher(`${baseUrl}/api/recorded-cases/${encodeURIComponent(caseId)}`, {
+        boundedFetch(`${baseUrl}/api/recorded-cases/${encodeURIComponent(caseId)}`, {
           headers: { Accept: "application/json" },
         }),
       ),
@@ -58,7 +79,7 @@ export async function loadRecordedCases(
   }
 }
 
-function isRecordedCaseView(value: unknown): value is RecordedCaseView {
+export function isRecordedCaseView(value: unknown): value is RecordedCaseView {
   if (!isRecord(value)) return false;
   const candidate = value as Partial<RecordedCaseView>;
   return (

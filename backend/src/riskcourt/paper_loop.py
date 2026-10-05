@@ -16,7 +16,11 @@ from typing import Any, Protocol, cast
 
 from pydantic import JsonValue
 
-from riskcourt.alpaca_account import AlpacaAccountAdapter, PaperAccountState
+from riskcourt.alpaca_account import (
+    AlpacaAccountAdapter,
+    PaperAccountState,
+    PaperCalendarUnavailable,
+)
 from riskcourt.alpaca_market_data import (
     AlpacaUnderlyingAdapter,
     MarketDataUnavailable,
@@ -70,6 +74,8 @@ from riskcourt.risk_limits import RiskStateStore
 from riskcourt.sizing import SizingDecision, size_defined_risk_position
 from riskcourt.spread_selector import SpreadCandidate, select_vertical_spreads
 from riskcourt.typesafe_state import build_typesafe_state
+
+MAX_CANDIDATE_EVALUATIONS = 3
 
 
 class PaperCycleUnavailable(RuntimeError):
@@ -171,49 +177,109 @@ def run_paper_cycle(
     candidates = select_vertical_spreads(chain, as_of=observed_at)
     if not candidates:
         return _blocked(case_id, account, "no_liquid_supported_spread", market=market, chain=chain)
-    candidate = candidates[0]
-    proposed_client_order_id = _client_order_id_for_candidate(case_id, candidate)
-    if any(item.client_order_id == proposed_client_order_id for item in account.pending_orders):
-        return _blocked(
-            case_id,
-            account,
-            "duplicate_pending_order",
-            market=market,
-            chain=chain,
-            candidate=candidate,
+    candidate_set = candidates[:MAX_CANDIDATE_EVALUATIONS]
+    candidate_evidence = tuple(
+        (candidate, _build_evidence(case_id, account, market, candidate))
+        for candidate in candidate_set
+    )
+    opened_evidence_ids = tuple(
+        dict.fromkeys(
+            item.evidence_id
+            for _, evidence_items in candidate_evidence
+            for item in evidence_items
         )
-    evidence = _build_evidence(case_id, account, market, candidate)
-    evidence_ids = tuple(item.evidence_id for item in evidence)
+    )
     _append_event(
         dependencies.event_log,
         case_id,
         DecisionEventType.CASE_OPENED,
         observed_at,
-        evidence_ids,
-        {"symbol": symbol, "mode": "paper", "evidence_count": len(evidence_ids)},
-    )
-    outcome = (
-        ForecastOutcome.ABOVE_STRIKE
-        if candidate.long_contract.right is OptionRight.CALL
-        else ForecastOutcome.BELOW_STRIKE
+        opened_evidence_ids,
+        {
+            "symbol": symbol,
+            "mode": "paper",
+            "evidence_count": len(opened_evidence_ids),
+            "candidate_limit": len(candidate_evidence),
+        },
     )
 
-    try:
-        jury = _run_jury(
-            dependencies.provider,
-            candidate,
-            case_id=case_id,
-            outcome=outcome,
-            observed_at=observed_at,
-            evidence_ids=evidence_ids,
-            evidence=evidence,
-            market=market,
-            minimum_edge=minimum_edge,
+    candidate: SpreadCandidate | None = None
+    forecast_horizon: datetime | None = None
+    evidence: tuple[EvidenceItem, ...] = ()
+    evidence_ids: tuple[str, ...] = ()
+    outcome: ForecastOutcome | None = None
+    jury: JuryDecision | None = None
+    candidate_search_count = 0
+    skipped_calendar = False
+    skipped_duplicate = False
+    for search_index, (ranked_candidate, candidate_items) in enumerate(
+        candidate_evidence, start=1
+    ):
+        try:
+            ranked_horizon = dependencies.account.market_close(
+                ranked_candidate.long_contract.expiry
+            )
+        except PaperCalendarUnavailable:
+            skipped_calendar = True
+            continue
+        ranked_client_order_id = _client_order_id_for_candidate(case_id, ranked_candidate)
+        if any(item.client_order_id == ranked_client_order_id for item in account.pending_orders):
+            skipped_duplicate = True
+            continue
+        ranked_evidence_ids = tuple(item.evidence_id for item in candidate_items)
+        ranked_outcome = (
+            ForecastOutcome.ABOVE_STRIKE
+            if ranked_candidate.long_contract.right is OptionRight.CALL
+            else ForecastOutcome.BELOW_STRIKE
         )
-    except ProviderUnavailable:
+        try:
+            ranked_jury = _run_jury(
+                dependencies.provider,
+                ranked_candidate,
+                case_id=case_id,
+                outcome=ranked_outcome,
+                observed_at=observed_at,
+                evidence_ids=ranked_evidence_ids,
+                evidence=candidate_items,
+                market=market,
+                horizon_at=ranked_horizon,
+                minimum_edge=minimum_edge,
+            )
+        except ProviderUnavailable:
+            return _blocked(
+                case_id,
+                account,
+                "provider_failure",
+                market=market,
+                chain=chain,
+                candidate=ranked_candidate,
+            )
+        candidate_search_count = search_index
+        candidate = ranked_candidate
+        forecast_horizon = ranked_horizon
+        evidence = candidate_items
+        evidence_ids = ranked_evidence_ids
+        outcome = ranked_outcome
+        jury = ranked_jury
+        if ranked_jury.decision is EdgeDecision.PASS:
+            break
+
+    if candidate is None or forecast_horizon is None or outcome is None or jury is None:
+        if skipped_duplicate and not skipped_calendar:
+            reason = "duplicate_pending_order"
+        elif skipped_calendar:
+            reason = "market_calendar_unavailable"
+        else:
+            reason = "no_candidate_with_supported_calendar"
         return _blocked(
-            case_id, account, "provider_failure", market=market, chain=chain, candidate=candidate
+            case_id,
+            account,
+            reason,
+            market=market,
+            chain=chain,
+            candidate=candidate_set[0],
         )
+    proposed_client_order_id = _client_order_id_for_candidate(case_id, candidate)
 
     _append_event(
         dependencies.event_log,
@@ -223,6 +289,7 @@ def run_paper_cycle(
         evidence_ids,
         {
             "forecast_count": len(jury.forecasts),
+            "candidate_search_count": candidate_search_count,
             "aggregate_probability": (
                 None if jury.aggregate.probability is None else str(jury.aggregate.probability)
             ),
@@ -543,21 +610,35 @@ def _run_jury(
     evidence_ids: tuple[str, ...],
     evidence: tuple[EvidenceItem, ...],
     market: UnderlyingMarketState,
+    horizon_at: datetime,
     minimum_edge: Decimal,
 ) -> JuryDecision:
     from riskcourt.orchestrator import run_jury
 
-    horizon = datetime.combine(candidate.long_contract.expiry, datetime.min.time(), tzinfo=UTC)
-    horizon = max(horizon, observed_at + timedelta(hours=1))
     state = build_typesafe_state(
         symbol=market.quote.symbol,
         outcome=outcome,
-        horizon_at=horizon,
+        horizon_at=horizon_at,
         as_of=observed_at,
         evidence=evidence,
         market=_market_context(
             market,
             forecast_reference=candidate.geometry.break_even_underlying,
+            forecast_event={
+                "symbol": market.quote.symbol,
+                "threshold": str(candidate.geometry.break_even_underlying),
+                "condition": (
+                    "underlying_price_above_threshold"
+                    if outcome is ForecastOutcome.ABOVE_STRIKE
+                    else "underlying_price_at_or_below_threshold"
+                ),
+                "observed_at": market.quote.quoted_at.isoformat(),
+                "horizon_at": horizon_at.isoformat(),
+                "settlement_rule": (
+                    "last regular-session underlying quote at the broker calendar close"
+                ),
+                "calendar_source": "Alpaca trading calendar",
+            },
         ),
         options=_options_context(candidate),
     )
@@ -567,7 +648,7 @@ def _run_jury(
         case_id=case_id,
         outcome=outcome,
         produced_at=observed_at,
-        horizon_at=horizon,
+        horizon_at=horizon_at,
         evidence_ids=evidence_ids,
         minimum_edge=minimum_edge,
         state=state,
@@ -700,6 +781,7 @@ def _market_context(
     market: UnderlyingMarketState,
     *,
     forecast_reference: Decimal | None = None,
+    forecast_event: dict[str, JsonValue] | None = None,
 ) -> dict[str, JsonValue]:
     """Build bounded, deterministic market context for semantic judgments."""
 
@@ -740,6 +822,8 @@ def _market_context(
             "kind": "deterministic_break_even_underlying",
             "value": str(forecast_reference),
         }
+    if forecast_event is not None:
+        context["forecast_event"] = forecast_event
     return context
 
 

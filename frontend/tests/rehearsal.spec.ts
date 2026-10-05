@@ -4,6 +4,7 @@ test("runs five consecutive recorded workstation rehearsals", async ({ browser }
   for (let run = 1; run <= 5; run += 1) {
     const context = await browser.newContext();
     const page = await context.newPage();
+    await page.route("**/api/**", (route) => route.abort());
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1, name: "RiskCourt" })).toBeVisible();
     await page.getByRole("button", { name: /Opportunities/ }).click();

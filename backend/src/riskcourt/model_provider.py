@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 from threading import Thread
+from time import monotonic
 from typing import Protocol, TypeVar
 
 from pydantic import Field, JsonValue, ValidationError
@@ -62,13 +63,20 @@ class ProviderBoundary:
         timeout_seconds: float = 10.0,
         max_calls: int = 3,
         max_cost_units: Decimal = Decimal("3"),
+        total_timeout_seconds: float = 30.0,
     ) -> None:
-        if timeout_seconds <= 0 or max_calls < 1 or max_cost_units < 0:
+        if (
+            timeout_seconds <= 0
+            or max_calls < 1
+            or max_cost_units < 0
+            or total_timeout_seconds <= 0
+        ):
             raise ValueError("provider limits must be positive and ordered")
         self._client = client
         self._timeout_seconds = timeout_seconds
         self._max_calls = max_calls
         self._max_cost_units = max_cost_units
+        self._deadline = monotonic() + total_timeout_seconds
         self._calls = 0
         self._cost = Decimal("0")
 
@@ -107,6 +115,9 @@ class ProviderBoundary:
     def _invoke(self, request: ProviderRequest) -> ProviderReply:
         if self._calls >= self._max_calls:
             raise ProviderUnavailable("provider call cap exceeded")
+        remaining = self._deadline - monotonic()
+        if remaining <= 0:
+            raise ProviderUnavailable("provider total time budget exceeded")
         self._calls += 1
         result: list[ProviderReply] = []
         failure: list[BaseException] = []
@@ -125,9 +136,9 @@ class ProviderBoundary:
 
         worker = Thread(target=run, daemon=True)
         worker.start()
-        worker.join(self._timeout_seconds)
+        worker.join(min(self._timeout_seconds, remaining))
         if worker.is_alive():
-            raise ProviderUnavailable("provider request timed out")
+            raise ProviderUnavailable("provider request timed out or total time budget exceeded")
         if failure:
             error = failure[0]
             if isinstance(error, ProviderUnavailable):

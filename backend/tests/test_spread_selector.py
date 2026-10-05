@@ -27,6 +27,8 @@ def contract(strike: str, right: OptionRight, *, expiry: date = date(2026, 9, 11
         theta=Decimal("-0.1"),
         vega=Decimal("0.2"),
         missing_values=(),
+        active=True,
+        tradable=True,
     )
 
 

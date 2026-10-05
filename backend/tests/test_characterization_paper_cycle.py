@@ -188,7 +188,8 @@ class TestEntry:
         assert bundle.account_adapter.calls == 1
         assert bundle.market_adapter.calls == 1
         assert bundle.chain_adapter.calls == 1
-        assert provider.calls == 3
+        # The catalyst role abstains without news evidence; the product mode is two-role.
+        assert provider.calls == 2
         assert bundle.client.calls == 1
 
     def test_client_order_id_starts_with_riskcourt(self) -> None:

@@ -1,8 +1,8 @@
 """Run one explicit, fail-closed RiskCourt Alpaca paper cycle.
 
-The default command is a read-only preflight.  Submission requires both
-``--submit`` and a private ``module:attribute`` provider, plus an explicit
-daily-P&L value.  Output is sanitized for evidence capture.
+The default command is a read-only preflight. Submission requires both
+``--submit`` and the configured provider. The daily risk baseline is read from
+the broker account snapshot. Output is sanitized for evidence capture.
 """
 
 from __future__ import annotations
@@ -36,10 +36,9 @@ def main(argv: list[str] | None = None) -> int:
         settings = Settings()
         if settings.riskcourt_mode is not RuntimeMode.PAPER:
             raise ValueError("RISKCOURT_MODE=paper is required; recorded mode is read-only")
-        daily_pnl = _parse_decimal(args.daily_pnl, "--daily-pnl", required=args.submit)
         case_id = args.case_id or _default_case_id()
         if args.submit:
-            result, log, lifecycle_persisted = _submit(settings, args, case_id, daily_pnl)
+            result, log, lifecycle_persisted = _submit(settings, args, case_id)
             output: dict[str, Any] = sanitize_result(result)
             output["audit"] = {
                 "event_count": len(log.events),
@@ -71,7 +70,6 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--case-id", help="stable lowercase case identifier for audit persistence")
     parser.add_argument("--symbol", default="SPY", help="underlying ticker (release scope: SPY)")
-    parser.add_argument("--daily-pnl", help="known paper daily P&L used by the drawdown gate")
     parser.add_argument("--provider", help="private provider module:attribute factory")
     parser.add_argument("--minimum-edge", default="0.08", help="jury edge required after hurdle")
     parser.add_argument(
@@ -107,7 +105,6 @@ def _submit(
     settings: Settings,
     args: argparse.Namespace,
     case_id: str,
-    daily_pnl: Decimal,
 ) -> tuple[Any, PersistentDecisionLog, bool]:
     provider = ProviderBoundary(
         load_configured_provider(settings, args.provider or settings.riskcourt_provider_spec),
@@ -117,7 +114,7 @@ def _submit(
     )
     account_adapter = AlpacaAccountAdapter.from_settings(settings)
     account = account_adapter.fetch()
-    risk = build_risk_state(account, daily_pnl=daily_pnl)
+    risk = build_risk_state(account)
     event_path = settings.riskcourt_state_dir / "events" / f"{case_id}.json"
     if event_path.exists():
         raise ValueError("case-id already has a persisted audit log; choose a new case-id")

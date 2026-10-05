@@ -142,14 +142,15 @@ def _scope_context(
     if juror_id == "juror_volatility":
         return _market_reference(market), dict(options)
     if juror_id == "juror_catalyst":
-        return {}, {}
+        event = market.get("forecast_event")
+        return ({"forecast_event": event} if event is not None else {}), {}
     raise ValueError("unknown juror specialty")
 
 
 def _market_reference(market: dict[str, JsonValue]) -> dict[str, JsonValue]:
     """Expose only the underlying reference needed to contextualize options."""
 
-    allowed = {"symbol", "feed", "quoted_at", "bid", "ask"}
+    allowed = {"symbol", "feed", "quoted_at", "bid", "ask", "forecast_event"}
     return {key: value for key, value in market.items() if key in allowed}
 
 

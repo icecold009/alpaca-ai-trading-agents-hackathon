@@ -44,13 +44,15 @@ class Settings(BaseSettings):
     riskcourt_live_trading: bool = False
     alpaca_live_trading: bool = False
     riskcourt_state_dir: Path = PROJECT_ROOT / ".riskcourt"
+    riskcourt_option_feed: str = "indicative"
     riskcourt_allowed_origins: str = ""
     riskcourt_provider_spec: str | None = None
     typesafe_api_key: SecretStr | None = None
     typesafe_model: str = Field(default="jev-latest", min_length=1, max_length=120)
     typesafe_timeout_seconds: float = Field(default=10.0, gt=0, le=60)
-    typesafe_max_calls: int = Field(default=3, ge=1, le=20)
+    typesafe_max_calls: int = Field(default=18, ge=1, le=20)
     typesafe_max_cost_units: Decimal = Field(default=Decimal("3"), ge=0, max_digits=18)
+    typesafe_total_timeout_seconds: float = Field(default=45.0, gt=0, le=300)
     typesafe_min_evidence_quality: Decimal = Field(
         default=Decimal("0.60"), ge=0, le=1, max_digits=8, decimal_places=7
     )
@@ -59,6 +61,9 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def reject_unsafe_configuration(self) -> Self:
         """Reject credentials and endpoints that could create a live-money path."""
+
+        if self.riskcourt_option_feed not in {"indicative", "opra"}:
+            raise ValueError("RISKCOURT_OPTION_FEED must be 'indicative' or 'opra'")
 
         is_official_paper_endpoint = (
             str(self.alpaca_paper_base_url) == "https://paper-api.alpaca.markets/"

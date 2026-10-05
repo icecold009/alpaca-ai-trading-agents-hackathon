@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from riskcourt.domain import ForecastOutcome, OptionRight
-from riskcourt.jurors import DeterministicJurorStub
+from riskcourt.jurors import JUROR_SPECS, DeterministicJurorStub
 from riskcourt.model_provider import (
     ProviderBoundary,
     ProviderReply,
@@ -95,3 +95,21 @@ def test_orchestrator_keeps_supported_jurors_when_one_role_lacks_evidence() -> N
     assert len(result.forecasts) == 2
     assert result.abstentions == (("juror_catalyst", NO_SUPPORTED_EVIDENCE),)
     assert result.aggregate.probability is not None
+
+
+def test_orchestrator_abstains_when_only_one_role_is_configured() -> None:
+    now = datetime(2026, 8, 30, tzinfo=UTC)
+    result = run_jury(
+        ProviderBoundary(DeterministicJurorStub()),
+        GEOMETRY,
+        case_id="case_single_role",
+        outcome=ForecastOutcome.ABOVE_STRIKE,
+        produced_at=now,
+        horizon_at=now + timedelta(days=7),
+        evidence_ids=("quote_spy",),
+        specs=JUROR_SPECS[:1],
+    )
+
+    assert result.decision.value == "abstain"
+    assert result.reason == "insufficient_juror_quorum"
+    assert len(result.forecasts) == 1

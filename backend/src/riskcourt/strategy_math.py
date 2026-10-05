@@ -6,6 +6,8 @@ from decimal import ROUND_FLOOR, Decimal
 ZERO = Decimal("0")
 ONE = Decimal("1")
 HALF = Decimal("0.5")
+DEFAULT_CALIBRATION_SCORE = Decimal("0.80")
+CALIBRATION_PRIOR_VERSION = "configured_shrinkage_prior_v1"
 OPTION_MULTIPLIER = Decimal("100")
 
 

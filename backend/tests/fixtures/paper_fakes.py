@@ -8,11 +8,13 @@ without performing any network calls or live trading.
 from __future__ import annotations
 
 from dataclasses import fields, is_dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any, cast
+from zoneinfo import ZoneInfo
 
+from alpaca.common.exceptions import APIError
 from alpaca.trading.requests import LimitOrderRequest
 from pydantic import JsonValue
 
@@ -98,6 +100,7 @@ def build_fake_account_state(
             observed_at=observed_at,
             status="ACTIVE",
             equity=equity,
+            last_equity=equity,
             options_buying_power=options_buying_power,
             options_approved_level=approved_level,
             options_trading_level=trading_level,
@@ -173,6 +176,8 @@ def build_fake_chain_contract(
         theta=Decimal("-0.10"),
         vega=Decimal("0.20"),
         missing_values=(),
+        active=True,
+        tradable=True,
     )
 
 
@@ -288,13 +293,26 @@ def build_fake_order_response(
 class FakeAccountAdapter:
     """Deterministic fake account adapter."""
 
-    def __init__(self, state: PaperAccountState) -> None:
+    def __init__(
+        self,
+        state: PaperAccountState,
+        *,
+        close_time: time = time(16, 0),
+    ) -> None:
         self.state = state
+        self.close_time = close_time
         self.calls: int = 0
 
     def fetch(self) -> PaperAccountState:
         self.calls += 1
         return self.state
+
+    def market_close(self, on_date: date) -> datetime:
+        return datetime.combine(
+            on_date,
+            self.close_time,
+            tzinfo=ZoneInfo("America/New_York"),
+        ).astimezone(UTC)
 
 
 class FakeMarketAdapter:
@@ -352,6 +370,7 @@ class FakeTradingClient:
         self.responses = list(responses) if responses else []
         self.exc = exc
         self.submitted_requests: list[LimitOrderRequest] = []
+        self.orders: dict[str, Any] = {}
 
     def submit_order(self, order_data: LimitOrderRequest) -> Any:
         self.calls += 1
@@ -359,11 +378,21 @@ class FakeTradingClient:
         if self.exc is not None:
             raise self.exc
         if self.responses:
-            return self.responses.pop(0)
-        return build_fake_order_response(
-            client_order_id=str(order_data.client_order_id),
-            status=self.default_status,
-        )
+            response = self.responses.pop(0)
+        else:
+            response = build_fake_order_response(
+                client_order_id=str(order_data.client_order_id),
+                status=self.default_status,
+            )
+        self.orders[str(order_data.client_order_id)] = response
+        return response
+
+    def get_order_by_client_id(self, client_id: str) -> Any:
+        order = self.orders.get(client_id)
+        if order is not None:
+            return order
+        http_error = SimpleNamespace(response=SimpleNamespace(status_code=404))
+        raise APIError("order not found", http_error)  # type: ignore[no-untyped-call]
 
 
 class ConfigurableJurorProvider:

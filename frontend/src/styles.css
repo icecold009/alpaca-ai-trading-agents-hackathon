@@ -1094,6 +1094,48 @@ a:focus-visible {
   color: var(--muted);
   font-size: 9px;
 }
+.position-card {
+  display: grid;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.position-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.position-values span {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.position-values b {
+  color: var(--ink);
+  text-align: right;
+}
+.exit-preview {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #0b1120;
+}
+.exit-preview p,
+.exit-preview small {
+  margin: 0;
+}
+.closed-positions {
+  margin-top: 12px;
+  color: var(--muted);
+}
+.closed-positions summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
 .journal-layout {
   grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
   align-items: start;
@@ -1296,14 +1338,12 @@ a:focus-visible {
     margin: 0 0 11px;
   }
   .primary-nav {
-    display: flex;
-    overflow-x: auto;
-    gap: 3px;
-    padding-bottom: 2px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
   }
   .nav-button {
-    width: auto;
-    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
     padding: 9px 10px;
     white-space: nowrap;
   }

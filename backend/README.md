@@ -16,6 +16,21 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m mypy src tests
 ```
 
+For a pinned Windows x64 Python 3.12 setup, run these commands from the
+repository root. The lock pins project runtime/dev dependencies and the
+setuptools build backend; install it before the editable project because build
+isolation is disabled for that final step:
+
+```powershell
+py -3.12 -m venv backend\.venv
+backend\.venv\Scripts\python.exe -m pip install -r backend\requirements-lock-win-py312.txt
+backend\.venv\Scripts\python.exe -m pip install --no-build-isolation --no-deps -e "backend[dev]"
+```
+
+The lock is Windows x64 / CPython 3.12 specific and pins versions without
+artifact hashes. Resolve dependencies separately on other platforms and
+Python versions.
+
 The editable install includes FastAPI, Pydantic settings, SQLAlchemy/Alembic with SQLite support, Alpaca's Python SDK, and the model SDK. The `dev` extra adds the test, lint, type-check, and coverage tools.
 
 ## Runtime modes
@@ -47,7 +62,7 @@ paper order adapter. It performs a read-only preflight by default:
 .\.venv\Scripts\python.exe scripts/run_paper_cycle.py --symbol SPY
 ```
 
-Submission requires an explicit `--submit` and a known `--daily-pnl` value. The command persists
+Submission requires an explicit `--submit`. Daily P&L is derived from the broker account snapshot. The command persists
 the hash-chained audit log under `RISKCOURT_STATE_DIR/events/`, refuses to reuse
 an existing case ID, and prints only sanitized evidence. It never supports live
 money or exposes an unauthenticated submission route.
@@ -55,7 +70,7 @@ money or exposes an unauthenticated submission route.
 ```powershell
 .\.venv\Scripts\python.exe scripts/run_paper_cycle.py `
   --submit `
-  --daily-pnl 0 --case-id case_runner_20260831_120000
+  --case-id case_runner_20260831_120000
 ```
 
 Use `--provider module:attribute` only when supplying a custom provider in deterministic or shadow

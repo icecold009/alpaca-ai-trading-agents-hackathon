@@ -35,14 +35,20 @@ def run_jury(
     horizon_at: datetime,
     evidence_ids: tuple[str, ...],
     specs: tuple[JurorSpec, ...] = JUROR_SPECS,
+    minimum_quorum: int = 2,
     minimum_edge: Decimal = Decimal("0.08"),
     state: TypeSafeState | None = None,
 ) -> JuryDecision:
+    if minimum_quorum < 1:
+        raise ValueError("minimum juror quorum must be positive")
     forecasts: list[ProbabilityForecast] = []
     active_specs: list[JurorSpec] = []
     abstentions: list[tuple[str, str]] = []
     try:
         for spec in specs:
+            if state is not None and not state.for_juror(spec.juror_id).evidence:
+                abstentions.append((spec.juror_id, NO_SUPPORTED_EVIDENCE))
+                continue
             try:
                 forecast = run_juror(
                     boundary,
@@ -95,6 +101,24 @@ def run_jury(
             None,
             EdgeDecision.ABSTAIN,
             NO_SUPPORTED_EVIDENCE,
+            tuple(abstentions),
+        )
+
+    if len(active_specs) < minimum_quorum:
+        empty = JuryAggregate(
+            status=AggregationStatus.ABSTAIN,
+            probability=None,
+            contributions=(),
+            total_weight=Decimal("0"),
+            disagreement=None,
+            reason="insufficient_juror_quorum",
+        )
+        return JuryDecision(
+            tuple(forecasts),
+            empty,
+            None,
+            EdgeDecision.ABSTAIN,
+            "insufficient_juror_quorum",
             tuple(abstentions),
         )
 

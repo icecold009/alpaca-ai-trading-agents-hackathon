@@ -15,6 +15,7 @@ from riskcourt.model_provider import (
     ProviderRequest,
     ProviderUnavailable,
 )
+from riskcourt.strategy_math import CALIBRATION_PRIOR_VERSION, DEFAULT_CALIBRATION_SCORE
 from riskcourt.typesafe_state import TypeSafeState
 
 
@@ -73,13 +74,14 @@ def run_juror(
     provider_metadata = dict(result.trace.metadata)
     provider_metadata["attempts"] = result.trace.attempts
     provider_metadata["cost_units"] = str(result.trace.cost_units)
+    provider_metadata["calibration_basis"] = CALIBRATION_PRIOR_VERSION
     return ProbabilityForecast(
         forecast_id=f"forecast_{spec.juror_id.removeprefix('juror_')}",
         case_id=case_id,
         juror_id=spec.juror_id,
         outcome=outcome,
         probability=output.probability,
-        calibration_score=Decimal("0.80"),
+        calibration_score=DEFAULT_CALIBRATION_SCORE,
         confidence_stake=output.confidence_stake,
         produced_at=produced_at,
         horizon_at=horizon_at,
@@ -105,7 +107,7 @@ class DeterministicJurorStub:
         return ProviderReply(
             output={
                 "probability": probabilities[juror_id],
-                "calibration_score": "0.80",
+                "calibration_score": str(DEFAULT_CALIBRATION_SCORE),
                 "confidence_stake": "0.70",
                 "evidence_ids": request.payload["available_evidence_ids"],
                 "rationale": f"Deterministic {juror_id} stub rationale",
